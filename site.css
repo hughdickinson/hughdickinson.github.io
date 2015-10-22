@@ -3,15 +3,16 @@ body {
 }
 
 h1 {
-	background-color: blue;
+	background-color: teal;
 	border: 1px solid black;
 	border-radius: 10px;
+	padding: 10px;
 }
 
-a{
+a {
 	color: teal;	
 }
 
-a:hover{
+a: hover{
 	color: blue;
 }
