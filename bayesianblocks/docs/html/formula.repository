@@ -1,0 +1,5 @@
+\form#0:\[\log(L_{\max})=N^{k}\log(\frac{N^{k}}{M^{k}})+(M^{k}-N^{k}) \log(1-\frac{N^{k}}{M^{k}}) - \log(\gamma)\]
+\form#1:$M^{k}$
+\form#2:$\log(\gamma)$
+\form#3:$gamma$
+\form#4:$\gamma$
