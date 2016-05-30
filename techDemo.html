@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Simple Canvas Example</title>
+  <style>
+  canvas {
+    border: 3px #CCC solid;
+  }
+  #templateCanvas{
+    position:absolute;
+    top:20px;
+    left:500px;
+  }
+  #spectrumCanvas{
+    position: absolute;
+    top: 20px;
+    left: 20px;
+  }
+  #spectrumOverlayCanvas{
+    position: absolute;
+    top: 20px;
+    left: 20px;
+  }
+  </style>
+</head>
+
+<body>
+  <div id="spectrum" ondragover="templateOverSpectrum(event)" ondrop="templateDrop(event)">
+  <canvas id="spectrumCanvas" height="450" width="450"></canvas>
+  <canvas id="spectrumOverlayCanvas" height="450" width="450"></canvas>
+  </div>
+  <div id="template" draggable="true" ondragstart="templateDrag(event)">
+    <canvas id="templateCanvas" height="100" width="100"></canvas>
+  </div>
+  <script>
+
+  var spectrumCanvas = document.querySelector("#spectrumCanvas");
+  var spectrumContext = spectrumCanvas.getContext("2d");
+  spectrumContext.strokeStyle = "#0000FF"
+
+  var spectrumWidth = spectrumCanvas.width;
+  var spectrumHeight = spectrumCanvas.height;
+
+  var spectrumOverlayCanvas = document.querySelector("#spectrumOverlayCanvas");
+  var spectrumOverlayContext = spectrumOverlayCanvas.getContext("2d");
+  spectrumOverlayContext.strokeStyle = "#FF0000"
+
+  var spectrumOverlayWidth = spectrumOverlayCanvas.width;
+  var spectrumOverlayHeight = spectrumOverlayCanvas.height;
+
+  var templateCanvas = document.querySelector("#templateCanvas");
+  var templateContext = templateCanvas.getContext("2d");
+  templateContext.strokeStyle = "#FF0000"
+
+  var templateWidth = templateCanvas.width;
+  var templateHeight = templateCanvas.height;
+
+  var dragPositionX = -100;
+
+  var requestAnimationFrame = window.requestAnimationFrame ||
+  window.mozRequestAnimationFrame ||
+  window.webkitRequestAnimationFrame ||
+  window.msRequestAnimationFrame;
+
+  var numSpecBins = 40;
+  var numTemplateBins = 10;
+
+  var initialX = 10;
+
+  var currentX = initialX;
+  var currentY = 0.0;
+
+  var spectrumBins = genSpectrumBins(numSpecBins, spectrumHeight);
+  var templateBins = genTemplateBins(numTemplateBins, templateHeight);
+  var overlayBins = [];
+
+  var templateDroppedOnSpec = false;
+  var templateBeingDragged = false;
+
+  function drawSpectrumBin(context, value, spectrumWidth, numSpecBins){
+    context.lineTo(currentX, value);
+    currentX += (spectrumWidth-20)/(numSpecBins);
+    context.lineTo(currentX, value);
+    currentY = value;
+  }
+
+  function genTemplateBins(numSpecBins, spectrumHeight){
+    var templateBins = [];
+
+    var iBin = 0;
+    for(iBin = 0; iBin < numSpecBins; ++iBin){
+      templateBins.push((spectrumHeight - 10) - (iBin == 3 || iBin == 7 ? 0.75*spectrumHeight : 0));
+      }
+      return templateBins;
+  }
+
+  function genSpectrumBins(numSpecBins, spectrumHeight){
+    var spectrumBins = [];
+
+    var iBin = 0;
+    for(iBin = 0; iBin < numSpecBins; ++iBin){
+      spectrumBins.push((spectrumHeight - 10) - Math.random()*(spectrumHeight/1.5));
+      }
+      return spectrumBins;
+  }
+
+  function genOverlaySpectrumBins(templateBins, spectrumBins, templateHeight, spectrumHeight){
+    var overlayBins = [];
+    if(dragPositionX > 0.0){
+      var binWidth = (spectrumWidth-20)/(spectrumBins.length)
+      var rootBin = Math.floor((dragPositionX)/binWidth) + templateBins.length/2;
+      rootBin = rootBin > 0 ? rootBin : 0;
+      for(var iBin = 0; iBin < spectrumBins.length; ++iBin){
+        overlayBins.push(templateBins[rootBin - iBin] < (templateHeight - 10) ? spectrumBins[iBin] : (spectrumHeight - 10));
+      }
+    }
+    return overlayBins;
+  }
+
+  function drawSpectrum(spectrumContext, spectrumWidth, spectrumHeight, numSpecBins, spectrumBinValues) {
+    spectrumContext.clearRect(0, 0, spectrumWidth, spectrumHeight);
+
+    // draw the spectrum
+    spectrumContext.beginPath();
+    spectrumContext.moveTo(initialX, (spectrumHeight - 10));
+    currentX = initialX;
+
+    for(iBin = 0; iBin < numSpecBins; ++iBin){
+      drawSpectrumBin(spectrumContext, spectrumBinValues[iBin], spectrumWidth, numSpecBins);
+    }
+    spectrumContext.stroke();
+  }
+
+function drawMainSpectrum(){
+  drawSpectrum(spectrumContext, spectrumWidth, spectrumHeight, numSpecBins, spectrumBins);
+}
+
+function drawTemplateSpectrum(){
+  drawSpectrum(templateContext, templateWidth, templateHeight, numTemplateBins, templateBins);
+}
+
+function drawOverlaySpectrum(){
+  drawSpectrum(spectrumContext, spectrumWidth, spectrumHeight, numSpecBins, spectrumBins);
+if(templateBeingDragged || templateDroppedOnSpec){
+  drawSpectrum(spectrumOverlayContext, spectrumOverlayWidth, spectrumOverlayHeight, numSpecBins, overlayBins);
+}
+}
+
+
+function templateDrag(event){
+  templateBeingDragged = true;
+  templateDroppedOnSpec = false;
+  requestAnimationFrame(drawMainSpectrum);
+}
+
+function templateOverSpectrum(event){
+  event.preventDefault();
+  dragPositionX = event.pageX - spectrumCanvas.offsetLeft;
+  overlayBins = genOverlaySpectrumBins(templateBins, spectrumBins, templateHeight, spectrumHeight)
+  requestAnimationFrame(drawOverlaySpectrum);
+}
+
+function templateDrop(event){
+  event.preventDefault();
+  templateDroppedOnSpec = true;
+  templateBeingDragged = false;
+  requestAnimationFrame(drawOverlaySpectrum);
+}
+
+drawMainSpectrum();
+drawTemplateSpectrum();
+  </script>
+</body>
+</html>
