@@ -1,6 +1,3 @@
-<?php
-$fitsFilePath = '3C279_binned_ccube.fits'
-?>
 <html>
 <head>
   <title>Test FITS Cube</title>
@@ -255,7 +252,7 @@ $fitsFilePath = '3C279_binned_ccube.fits'
   /* Load the FITS data.
   */
   function loadFits(){
-    var url = '<?php echo $fitsFilePath; ?>';
+    var url = 'http://fermi.gsfc.nasa.gov/ssc/data/analysis/scitools/data/BinnedLikelihood/3C279_binned_ccube.fits';
 
     // Initialize a new FITS File object
     var fitsCube = new FITS(url, onFitsLoadCallback);
@@ -276,7 +273,7 @@ $fitsFilePath = '3C279_binned_ccube.fits'
 </head>
 <body onload='onloadInit();'>
   <h1>Counts Cube Plotter</h1>
-  <h3>Plotting:<?php echo $fitsFilePath; ?></h3>
+  <h3>Plotting: '3C279_binned_ccube.fits'</h3>
 
 </body>
 </html>
