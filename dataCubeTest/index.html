@@ -4,27 +4,6 @@
   <script type="text/javascript" src="scripts/fits.js" charset="utf-8"></script>
   <script src="scripts/three.min.js"></script>
 
-  <script id="vertexShader" type="x-shader/x-vertex">
-
-  void main()	{
-
-    vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
-    gl_Position = projectionMatrix * mvPosition;
-
-  }
-
-  </script>
-
-  <script id="fragmentShader" type="x-shader/x-fragment">
-
-  void main()	{
-
-    gl_FragColor = vec4(0.5, 0.0, 0.0, 0.5);
-
-  }
-
-  </script>
-
   <script type="text/javascript">
   // Add rotate method to all Array subclasses
   Array.prototype.rotate = (function() {
@@ -48,16 +27,17 @@
 
   <script type="text/javascript">
   // Create an instance of the FITS handling class
+  var url = 'resources/3C279_binned_ccube.fits';
   var FITS = astro.FITS;
   var fitsHDU = null;
 
   // Global variables for 3D rendering
   var scene, camera, renderer, geometry;
   var intersectionRayCaster, intersectedObject;
-  var materials = new Array();
-  var meshes = new Array();
-  var textures = new Array();
-  var frameOrder = new Array();
+  var materials = new Array(0);
+  var meshes = new Array(0);
+  var textures = new Array(0);
+  var frameOrder = new Array(0);
 
   var fovRadius = 75;
 
@@ -108,7 +88,13 @@
     frameOrder.rotate(frameOrder.indexOf(topFrameIndex));
     for(var frameIndex = 0; frameIndex < frameOrder.length; ++frameIndex){
       //console.log('Called => ' + String(500 - 50*frameIndex));
-      meshes[frameOrder[frameIndex]].position.z = 500 - 50*frameIndex;
+      //console.log("frameIndex =>" + String(frameIndex));
+      //console.log("frameOrder[frameIndex] =>" + String(frameOrder[frameIndex]));
+      //console.log("meshes[frameOrder[frameIndex]] =>" + String(meshes[frameOrder[frameIndex]]));
+      var mesh = meshes[frameOrder[frameIndex]];
+      if(mesh){
+        meshes[frameOrder[frameIndex]].position.z = 500 - 50*frameIndex;
+      }
     }
   }
 
@@ -195,6 +181,8 @@
 
     scene.add( meshes[frameIndex] );
 
+    document.getElementById('loadingIndicator').innerHTML = "Loaded frame " + String(frameIndex);
+
     if(meshes.length == fitsHDU.data.depth){
       // All FITS data are loaded, so render 3D environment.
       render3dOnFITSload();
@@ -252,8 +240,6 @@
   /* Load the FITS data.
   */
   function loadFits(){
-    var url = 'resources/3C279_binned_ccube.fits';
-
     // Initialize a new FITS File object
     var fitsCube = new FITS(url, onFitsLoadCallback);
   }
@@ -265,6 +251,8 @@
     document.body.appendChild( renderer.domElement );
     document.addEventListener( 'mousemove', onDocumentMouseMove, false );
     document.addEventListener( 'click', onDocumentMouseClick, false );
+    document.getElementById('fileNameText').innerHTML = url;
+    document.getElementById('loadingIndicator').innerHTML = "Loading...";
     loadFits();
   }
 
@@ -273,7 +261,7 @@
 </head>
 <body onload='onloadInit();'>
   <h1>Counts Cube Plotter</h1>
-  <h3>Plotting: '3C279_binned_ccube.fits'</h3>
-
+  <h3>Plotting: <span id='fileNameText'></span></h3>
+  <p id='loadingIndicator'></p>
 </body>
 </html>
