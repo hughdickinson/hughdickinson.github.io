@@ -172,7 +172,7 @@
     * scale values into the range [0,255] before assigning to alpha channel
     * TODO: Could also set up a better color ramp.
     */
-    frame.forEach(function(val, index, array){
+    Array.from(frame).forEach(function(val, index, array){
       var sourceRow = Math.floor(index/fitsHDU.data.width);
       var sourceCol = index - fitsHDU.data.width*sourceRow;
       var destIndex = sourceRow*textureDimension + sourceCol;
