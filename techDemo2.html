@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<title>Simple Canvas Example</title>
+<style>
+canvas {
+  border: 3px #CCC solid;
+}
+#templateCanvas{
+  position:absolute;
+  top:20px;
+  left:500px;
+}
+#spectrumCanvas{
+  position: absolute;
+  top: 20px;
+  left: 20px;
+}
+#spectrumOverlayCanvas{
+  position: absolute;
+  top: 20px;
+  left: 20px;
+}
+</style>
+
+<script src="scripts/fits.js" type="text/javascript" charset="utf-8"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+
+</head>
+
+<body onload="loadCrossHair">
+<div id="spectrum" ondragover="templateOverSpectrum(event)" ondrop="templateDrop(event)">
+<canvas id="spectrumCanvas" height="450" width="450"></canvas>
+<canvas id="spectrumOverlayCanvas" height="450" width="450"></canvas>
+</div>
+<div id="template" draggable="true" ondragstart="templateDrag(event)">
+<canvas id="templateCanvas" height="100" width="100"></canvas>
+</div>
+
+<script>
+
+var spectrumCanvas = document.querySelector("#spectrumCanvas");
+var spectrumContext = spectrumCanvas.getContext("2d");
+spectrumContext.strokeStyle = "#0000FF"
+
+var spectrumWidth = spectrumCanvas.width;
+var spectrumHeight = spectrumCanvas.height;
+
+var spectrumOverlayCanvas = document.querySelector("#spectrumOverlayCanvas");
+var spectrumOverlayContext = spectrumOverlayCanvas.getContext("2d");
+spectrumOverlayContext.strokeStyle = "#FF0000"
+
+var spectrumOverlayWidth = spectrumOverlayCanvas.width;
+var spectrumOverlayHeight = spectrumOverlayCanvas.height;
+
+function loadCrossHair(){
+  // force download and caching of required crosshair image
+  var crossHairImage = new Image();
+  crossHairImage.src = "http://www.epicgeekdom.com/wordpress/wp-content/uploads/2013/09/Bigger-Small-Crosshairs-55x55.png";
+}
+
+var template = document.querySelector("#template")
+template.addEventListener("dragstart", function(e) {
+  var crossHairImage = document.createElement("img");
+  crossHairImage.src = "http://www.epicgeekdom.com/wordpress/wp-content/uploads/2013/09/Bigger-Small-Crosshairs-55x55.png";
+  crossHairImage.height = "55px";
+  crossHairImage.width = "55px";
+  e.dataTransfer.setDragImage(crossHairImage, 15, 100);
+}, false);
+var templateCanvas = document.querySelector("#templateCanvas");
+var templateContext = templateCanvas.getContext("2d");
+templateContext.strokeStyle = "#FF0000"
+
+var templateWidth = templateCanvas.width;
+var templateHeight = templateCanvas.height;
+
+var dragPositionX = -100;
+
+var requestAnimationFrame = window.requestAnimationFrame ||
+window.mozRequestAnimationFrame ||
+window.webkitRequestAnimationFrame ||
+window.msRequestAnimationFrame;
+
+var initialX = 10;
+
+var currentX = initialX;
+var currentY = 0.0;
+
+var g102MinLambda = 8000.0;
+var g102MaxLambda = 1.15e4;
+var g141MinLambda = 1.1e4;
+var g141MaxLambda = 1.67e4;
+
+var numSpecBins = 0;
+var numTemplateBins = 50;
+
+var testSpectrumFile = 'Par256_G102_BEAM_52A.dat';
+
+var templateDroppedOnSpec = false;
+var templateBeingDragged = false;
+
+function computeGaussian(x, norm, mean, sigma){
+  const index = (x-mean)*(x-mean)/(2.0*sigma*sigma);
+  const value = norm * Math.exp(-index);
+  return value;
+}
+
+function computeLineComplex(x, norms, means, sigmas){
+  var value = 0;
+  for(var iLine = 0; iLine < norms.length; ++iLine){
+    value += computeGaussian(x, norms[iLine], means[iLine], sigmas[iLine]);
+  }
+  return value;
+}
+
+function drawSpectrumBin(context, value, spectrumWidth, numSpecBins){
+  context.lineTo(currentX, value);
+  currentX += (spectrumWidth-20)/(numSpecBins);
+  context.lineTo(currentX, value);
+  currentY = value;
+}
+
+function genTemplateBins(numSpecBins, spectrumHeight){
+  var templateBins = [];
+  const norms = [0.75*templateHeight,0.75*templateHeight];
+  const means = [23., 27.];
+  const sigmas = [1.0, 1.0];
+  var iBin = 0;
+  for(iBin = 0; iBin < numSpecBins; ++iBin){
+    templateBins.push((spectrumHeight - 10) - computeLineComplex(iBin, norms, means, sigmas));
+  }
+  return templateBins;
+}
+
+function genSpectrumBins(numSpecBins, spectrumHeight){
+  var spectrumBins = [];
+
+  var iBin = 0;
+  for(iBin = 0; iBin < numSpecBins; ++iBin){
+    spectrumBins.push((spectrumHeight - 10) - Math.random()*(spectrumHeight/1.5));
+  }
+  return spectrumBins;
+}
+
+function genOverlaySpectrumBins(templateBins, spectrumBins, templateHeight, spectrumHeight){
+  var overlayBins = [];
+  if(dragPositionX > 0.0){
+    var binWidth = (spectrumWidth-20)/(spectrumBins.length)
+    var rootBin = Math.floor((dragPositionX)/binWidth) - templateBins.length/2;
+    var floatRootBin = dragPositionX/binWidth - templateBins.length/2
+    var stretch = rootBin/numSpecBins;
+    clampedRootBin = rootBin > 0 ? rootBin : 0;
+    for(var iBin = 0; iBin < spectrumBins.length; ++iBin){
+      //overlayBins.push(templateBins[rootBin - iBin] < (templateHeight - 10) ? spectrumBins[iBin] : (spectrumHeight - 10));
+      const baseLine = (spectrumHeight - 10);
+      const means = [ floatRootBin + 25 - (10.0*stretch), floatRootBin + 25 + (10.0*stretch)];
+      const meansInBounds = [
+        Math.floor(means[0]) > 0 && Math.floor(means[0]) < numSpecBins,
+        Math.floor(means[1]) > 0 && Math.floor(means[1]) < numSpecBins
+      ]
+      const norms = [ baseLine - (meansInBounds[0] ? spectrumBins[Math.round(means[0])] : 0.),
+       baseLine - (meansInBounds[1] ? spectrumBins[Math.round(means[1])] : 0.)
+     ];
+      const sigmas = [1., 1.];
+      overlayBins.push((spectrumHeight - 10) - computeLineComplex(iBin, norms, means, sigmas));
+    }
+  }
+  return overlayBins;
+}
+
+function drawSpectrum(spectrumContext, spectrumWidth, spectrumHeight, numSpecBins, spectrumBinValues) {
+  spectrumContext.clearRect(0, 0, spectrumWidth, spectrumHeight);
+
+  // draw the spectrum
+  spectrumContext.beginPath();
+  spectrumContext.moveTo(initialX, (spectrumHeight - 10));
+  currentX = initialX;
+
+  for(iBin = 0; iBin < numSpecBins; ++iBin){
+    drawSpectrumBin(spectrumContext, spectrumBinValues[iBin], spectrumWidth, numSpecBins);
+  }
+  spectrumContext.stroke();
+}
+
+function drawMainSpectrum(){
+  drawSpectrum(spectrumContext, spectrumWidth, spectrumHeight, numSpecBins, spectrumBins);
+}
+
+function drawTemplateSpectrum(){
+  drawSpectrum(templateContext, templateWidth, templateHeight, numTemplateBins, templateBins);
+}
+
+function drawOverlaySpectrum(){
+  drawSpectrum(spectrumContext, spectrumWidth, spectrumHeight, numSpecBins, spectrumBins);
+  if(templateBeingDragged || templateDroppedOnSpec){
+    drawSpectrum(spectrumOverlayContext, spectrumOverlayWidth, spectrumOverlayHeight, numSpecBins, overlayBins);
+  }
+}
+
+function templateDrag(event){
+  templateBeingDragged = true;
+  templateDroppedOnSpec = false;
+  requestAnimationFrame(drawMainSpectrum);
+}
+
+function templateOverSpectrum(event){
+  event.preventDefault();
+  dragPositionX = event.pageX - spectrumCanvas.offsetLeft;
+  overlayBins = genOverlaySpectrumBins(templateBins, spectrumBins, templateHeight, spectrumHeight)
+  requestAnimationFrame(drawOverlaySpectrum);
+}
+
+function templateDrop(event){
+  event.preventDefault();
+  templateDroppedOnSpec = true;
+  templateBeingDragged = false;
+  requestAnimationFrame(drawOverlaySpectrum);
+}
+
+var loadCrossHair = function(){
+  var crosshair = document.createElement("img");
+  crosshair.setAttribute("id", "crosshair");
+  crosshair.src = "http://www.epicgeekdom.com/wordpress/wp-content/uploads/2013/09/Bigger-Small-Crosshairs-55x55@2x.png";
+  crosshair.height = "55px";
+  crosshair.width = "55px";
+}
+
+var lineRestLambdas = {
+  Halpha:6563.0,
+  Hbeta:4861.0,
+  Oiii_1:4959.0,
+  Oiii_2:5007.0,
+  Oii:3727.0,
+  Sii:6724.0,
+  Siii_1:9069.0,
+  Siii_2:9532.0,
+  Lya:1216.0,
+  He:10830.0,
+  Fe:12600.0,
+  Pag:10940.0,
+  Pab:12810.0
+}
+
+var spectrumBins = [];
+var templateBins = genTemplateBins(numTemplateBins, templateHeight);
+var overlayBins = [];
+
+// Load spectrum data from text file and plot once loaded
+$.ajax(testSpectrumFile, {
+  contentType: 'text/plain',
+  success: function(data, status, reponseObj){
+    var lines = data.split('\n');
+    var maxSpecVal = 0.0;
+    for (var iDataLine = 0; iDataLine < lines.length; ++iDataLine){
+      lineArray = lines[iDataLine].split(/\s+/);
+      if(lineArray[1] > this.g102MinLambda && lineArray[1] < this.g102MaxLambda){
+        this.spectrumBins.push(lineArray[3]);
+        maxSpecVal = maxSpecVal < lineArray[3] ? lineArray[3] : maxSpecVal;
+      }
+    }
+    for(var iSpecBin = 0; iSpecBin < this.spectrumBins.length; ++iSpecBin){
+      this.spectrumBins[iSpecBin] = (spectrumHeight - 10) - 0.5*(this.spectrumHeight-20)*this.spectrumBins[iSpecBin]/maxSpecVal;
+    }
+    this.numSpecBins = this.spectrumBins.length;
+    this.drawMainSpectrum();
+    this.drawTemplateSpectrum();
+  },
+  context: window
+})
+
+</script>
+</body>
+</html>
