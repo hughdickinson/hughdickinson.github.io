@@ -1,0 +1,1369 @@
+var Ys=Object.defineProperty;var Ks=(o,t,n)=>t in o?Ys(o,t,{enumerable:!0,configurable:!0,writable:!0,value:n}):o[t]=n;var un=(o,t,n)=>Ks(o,typeof t!="symbol"?t+"":t,n);import{r as d,j as a,R as hn,a as qs}from"./vendor-react-CaWfk93z.js";import{g as Mo,h as Hn,G as Xs}from"./vendor-CBCmFtqW.js";import{u as x,f as qt}from"./vendor-styled-Nm-b085n.js";import{I as Bt,R as Fn,L as yt,K as pn,S as Zs,a as Gs,G as gn}from"./vendor-konva-CTFnODSI.js";(function(){const t=document.createElement("link").relList;if(t&&t.supports&&t.supports("modulepreload"))return;for(const r of document.querySelectorAll('link[rel="modulepreload"]'))s(r);new MutationObserver(r=>{for(const i of r)if(i.type==="childList")for(const c of i.addedNodes)c.tagName==="LINK"&&c.rel==="modulepreload"&&s(c)}).observe(document,{childList:!0,subtree:!0});function n(r){const i={};return r.integrity&&(i.integrity=r.integrity),r.referrerPolicy&&(i.referrerPolicy=r.referrerPolicy),r.crossOrigin==="use-credentials"?i.credentials="include":r.crossOrigin==="anonymous"?i.credentials="omit":i.credentials="same-origin",i}function s(r){if(r.ep)return;r.ep=!0;const i=n(r);fetch(r.href,i)}})();const Wt={BASE_URL:"https://krklw5qhvnewm2tgmsimbb3eva0twxkm.lambda-url.eu-north-1.on.aws",EXCHANGE_ENDPOINT:"/oauth/exchange",REFRESH_ENDPOINT:"/oauth/refresh"},Et={AUTHORIZE_URL:"https://panoptes.zooniverse.org/oauth/authorize",CLIENT_ID:"LrhZwulhoxS3nplhpKg6cJb22Gilyjz3gaRGlubAtEk",REDIRECT_URI:"https://hughdickinson.github.io",SCOPES:["public","classification"]},mt={BUFFER_SECONDS:300,MAX_RETRIES:3,RETRY_DELAY_BASE_MS:1e3},bt={TOKENS_KEY:"zoo_tokens"},Js={CODE:"code"};function Vs(o,t){return t.split(",").map(s=>s.trim()).some(s=>{if(s.endsWith("*")){const r=s.slice(0,-1);return o.startsWith(r)}else return o===s})}const Qs="app:panoptes,app:auth",De=o=>function(...n){if(!Vs(o,Qs))return;const s=new Date,i=`${s.toLocaleTimeString("en-US",{hour12:!1,hour:"2-digit",minute:"2-digit",second:"2-digit"})}.${String(s.getMilliseconds()).padStart(3,"0")}`;console.log(`%c${o}%c [${i}]`,"color: #0099ff; font-weight: bold;","color: #888;",...n)},v={app:De("app:main"),canvas:De("app:canvas"),sam2:De("app:sam2"),store:De("app:store"),auth:De("app:auth"),debug:De("app:debug"),masks:De("app:masks"),annotationRenderer:De("app:annotationRenderer"),history:De("app:history"),panoptes:De("app:panoptes")};let Xt=null,xt=0;function mn(o){if(Xt=o,o&&o.expires_in?xt=Date.now()+o.expires_in*1e3:xt=0,o){const t={...o,token_expires_at:xt};localStorage.setItem(bt.TOKENS_KEY,JSON.stringify(t))}else localStorage.removeItem(bt.TOKENS_KEY)}function er(){return Xt}function tr(){try{const o=localStorage.getItem(bt.TOKENS_KEY);if(!o)return null;const t=JSON.parse(o),n=t.token_expires_at;if(n&&Date.now()>n)return localStorage.removeItem(bt.TOKENS_KEY),null;const s={access_token:t.access_token,refresh_token:t.refresh_token,expires_in:t.expires_in};return Xt=s,xt=n||0,s}catch(o){return v.auth("Failed to load token from storage:",o),null}}function or(){Xt=null,xt=0,localStorage.removeItem(bt.TOKENS_KEY)}function nr(o,t){const n=d.useRef(null),s=d.useRef(!1),{onTokenRefreshed:r,onRefreshFailed:i}=t,c=d.useCallback(async(p=0)=>{if(s.current)return v.auth("[useTokenRefresh] Refresh already in progress, skipping"),!1;if(!(o!=null&&o.refresh_token))return v.auth("[useTokenRefresh] No refresh token available"),p===0&&(i==null||i()),!1;s.current=!0;try{const u=`${Wt.BASE_URL}${Wt.REFRESH_ENDPOINT}`,y=await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({refresh_token:o.refresh_token})});if(s.current=!1,!y.ok)throw new Error(`Refresh failed with status ${y.status}`);const g=await y.json();return r(g),v.auth("[useTokenRefresh] Token refreshed successfully"),!0}catch(u){if(s.current=!1,v.auth(`[useTokenRefresh] Token refresh error (attempt ${p+1}/${mt.MAX_RETRIES}):`,u),p<mt.MAX_RETRIES-1){const y=Math.pow(2,p)*mt.RETRY_DELAY_BASE_MS;return v.auth(`[useTokenRefresh] Retrying refresh in ${y}ms...`),await new Promise(g=>setTimeout(g,y)),c(p+1)}else return v.auth(`[useTokenRefresh] Token refresh failed after ${mt.MAX_RETRIES} attempts`),i==null||i(),!1}},[o,r,i]),h=d.useCallback(p=>{n.current&&clearTimeout(n.current);const u=Math.max(0,p-mt.BUFFER_SECONDS);v.auth(`[useTokenRefresh] Scheduling refresh in ${u}s (token expires in ${p}s)`),u<=0?c():n.current=setTimeout(()=>{v.auth("[useTokenRefresh] Refresh deadline reached, refreshing token..."),c()},u*1e3)},[c]),l=d.useCallback(()=>{n.current&&(clearTimeout(n.current),n.current=null)},[]);return d.useEffect(()=>()=>{l()},[l]),{scheduleRefresh:h,refreshToken:c,cancelRefresh:l}}async function ze(o,t,n={}){const{token:s,method:r="GET",body:i}=n,c={Accept:"application/vnd.api+json; version=1","Content-Type":r==="GET"||r==="HEAD"?"application/vnd.api+json; version=1":"application/json"};s&&(c.Authorization=`Bearer ${s}`);const h=`${o}${t}`;try{const l={method:r,headers:c};i&&(l.body=JSON.stringify(i));const p=await fetch(h,l);if(!p.ok){let u;try{const y=await p.json();u=y.detail??y.error??`HTTP ${p.status}`}catch{u=`HTTP ${p.status}`}throw new Error(`${r} ${t} failed: ${u}`)}return p.json()}catch(l){throw l instanceof Error?l:new Error(`API call failed: ${String(l)}`)}}function Zt(o){const t=new URLSearchParams;for(const[s,r]of Object.entries(o))r!==void 0&&t.set(s,r);const n=t.toString();return n?`?${n}`:""}const Ne="https://www.zooniverse.org/api",We="https://panoptes-staging.zooniverse.org/api",Ro="30908",lt="32554".trim()??"29070",Eo=!1,fn="138809".trim()||void 0,Ht={staging:Eo};fn&&(Ht.subjectSetId=fn);function sr(o,t="application/vnd.api+json; version=1"){const n={Accept:"application/vnd.api+json; version=1","Content-Type":t};return o&&(n.Authorization=`Bearer ${o}`),n}async function rr(o,t,n){const s=typeof n=="boolean"?{staging:n}:n??{},{staging:r=!1,subjectSetId:i}=s,c=r?We:Ne,h=Zt({workflow_id:o,subject_set_id:i});return(await ze(c,`/subjects/queued${h}`,{token:t})).subjects??[]}const Co=100;async function po(o,t,n,s,r){var c;const i=[];for(let h=1;;h++){const l=Zt({...n,page_size:String(Co),page:String(h)}),p=await ze(o,`${t}${l}`,{token:r});i.push(...p[s]??[]);const u=(c=p.meta)==null?void 0:c[s];if(!(u!=null&&u.next_page))return i}}async function ar(o,t,n=!1){const s=n?We:Ne,r=await po(s,"/subject_sets",{workflow_id:o},"subject_sets",t);if(r.length===0)return[];const i=await po(s,"/set_member_subjects",{subject_set_id:r.map(l=>l.id).join(",")},"set_member_subjects",t),c=[...new Set(i.map(l=>l.links.subject))],h=new Map;for(let l=0;l<c.length;l+=Co){const p=await po(s,"/subjects",{id:c.slice(l,l+Co).join(",")},"subjects",t);for(const u of p)h.set(u.id,u)}return c.map(l=>h.get(l)).filter(l=>!!l)}async function ir(o,t,n=!1){var i;return(i=(await ze(n?We:Ne,`/subjects/${o}`,{token:t})).subjects)==null?void 0:i[0]}async function cr(o,t,n=!1){var i;return(i=(await ze(n?We:Ne,`/workflows/${o}`,{token:t})).workflows)==null?void 0:i[0]}async function lr(o,t,n=!1){var i,c;return{id:((c=(i=(await ze(n?We:Ne,"/classifications",{token:t,method:"POST",body:{classifications:o}})).classifications)==null?void 0:i[0])==null?void 0:c.id)??""}}async function dr(o,t,n,s=!1){const r=s?We:Ne,i=Zt({subject_id:o,workflow_id:t,sort:"-created_at",page_size:"20"}),h=((await ze(r,`/classifications${i}`,{token:n})).classifications??[]).filter(l=>{var p,u;return(!((p=l.links)!=null&&p.workflow)||String(l.links.workflow)===String(t))&&(((u=l.links)==null?void 0:u.subjects)??[]).map(String).includes(String(o))});return h.sort((l,p)=>Date.parse(p.created_at??"")-Date.parse(l.created_at??"")),h[0]??null}async function ur(o,t,n=!1){var i;return(i=(await ze(n?We:Ne,`/users/${o}`,{token:t})).users)==null?void 0:i[0]}async function hr(o,t,n=!1){var i;return(i=(await ze(n?We:Ne,`/projects/${o}`,{token:t})).projects)==null?void 0:i[0]}async function pr(o,t,n=!1){return await ze(n?We:Ne,o,{token:t})}const Xe=Mo(o=>({user:null,isLoading:!1,error:null,setUser:t=>o({user:t,error:null}),setLoading:t=>o({isLoading:t}),setError:t=>o({error:t}),clearUser:()=>o({user:null,error:null})}));function gr(o){if(!o)return{header:{alg:"",typ:""},payload:{},signature:""};const[t,n,s]=o.split("."),r=i=>JSON.parse(atob(i.replace(/-/g,"+").replace(/_/g,"/")));return{header:r(t),payload:r(n),signature:s}}const Nn=d.createContext({token:null,login:()=>{},logout:()=>{}}),mr=({children:o})=>{const[t,n]=d.useState(null),s=d.useRef(!1);d.useEffect(()=>{(async()=>{var y,g,b;const u=(b=(g=(y=gr((t==null?void 0:t.access_token)||"").payload)==null?void 0:y.data)==null?void 0:g.id)==null?void 0:b.toString();if(!t||!u){Xe.getState().clearUser();return}try{Xe.getState().setLoading(!0);const m=await ur(u,t.access_token);v.auth("User details fetched:",m),Xe.getState().setUser(m)}catch(m){v.auth("Failed to fetch user details:",m),Xe.getState().setError(m instanceof Error?m.message:"Failed to fetch user details")}finally{Xe.getState().setLoading(!1)}})()},[t]),d.useEffect(()=>{const l=tr();l&&(n(l),v.auth("[AuthContext] Token loaded from localStorage"))},[]);const{scheduleRefresh:r}=nr(t,{onTokenRefreshed:l=>{n(l),mn(l)},onRefreshFailed:()=>{c()}});d.useEffect(()=>{t!=null&&t.expires_in&&r(t.expires_in)},[t==null?void 0:t.access_token,r]),d.useEffect(()=>{if(s.current)return;s.current=!0;const p=new URL(window.location.href).searchParams.get(Js.CODE);p&&(async()=>{try{const u=`${Wt.BASE_URL}${Wt.EXCHANGE_ENDPOINT}`,g=await(await fetch(u,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({code:p})})).json();n(g),mn(g),window.history.replaceState({},"","/")}catch(u){v.auth("Token exchange error:",u)}})()},[]);const i=()=>{const l=new URL(Et.AUTHORIZE_URL);l.searchParams.set("response_type","code"),l.searchParams.set("client_id",Et.CLIENT_ID),l.searchParams.set("redirect_uri",Et.REDIRECT_URI),l.searchParams.set("scope",Et.SCOPES.join(" ")),window.location.href=l.toString()},c=()=>{n(null),or(),Xe.getState().clearUser()},h=d.useMemo(()=>({token:t,login:i,logout:c}),[t]);return a.jsx(Nn.Provider,{value:h,children:o})},Gt=()=>d.useContext(Nn),fr={primary:"#00979d",primaryLight:"#addde0",secondary:"#0F191E",neutral:{light:"#DEE3E9",medium:"#A8B0B8",dark:"#667788"},success:"#1ED359",error:"#E45950",warning:"#CC9200",info:"#009B9B",text:{primary:"#0F191E",secondary:"#667788",light:"#A8B0B8",inverse:"#FFFFFF"},background:{default:"#F5F7FA",surface:"#FFFFFF",elevated:"#F5F7FA"},border:"#DEE3E9"},yr={fontFamily:'"Karla", Arial, sans-serif',fontWeight:{regular:400,medium:500,bold:700},size:{xs:"12px",sm:"14px",base:"16px"},lineHeight:{tight:1.2,normal:1.5},heading:{h1:{fontSize:"36px",letterSpacing:"0.01em"},h2:{fontSize:"28px"},h3:{fontSize:"24px"},h4:{fontSize:"20px"},h5:{fontSize:"18px"},h6:{fontSize:"16px"}}},xr={xs:"4px",sm:"8px",md:"12px",lg:"16px",xl:"24px"},br={radius:{sm:"4px",base:"6px",lg:"8px",full:"9999px"},width:{thin:"1px"}},kr={sm:"0 1px 2px 0 rgba(0, 0, 0, 0.05)",md:"0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)"},wr={base:"250ms ease-in-out"},e={colors:fr,typography:yr,spacing:xr,borders:br,shadows:kr,transitions:wr},Jt=x.button`
+  padding: ${e.spacing.sm} ${e.spacing.lg};
+  font-family: ${e.typography.fontFamily};
+  font-size: ${e.typography.size.sm};
+  font-weight: ${e.typography.fontWeight.medium};
+  border: ${e.borders.width.thin} solid transparent;
+  border-radius: ${e.borders.radius.base};
+  cursor: pointer;
+  transition: all ${e.transitions.base};
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: ${e.spacing.sm};
+  white-space: nowrap;
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`,$r=x(Jt)`
+  background-color: ${e.colors.primary};
+  color: ${e.colors.text.inverse};
+  border-color: ${e.colors.primary};
+
+  &:hover:not(:disabled) {
+    background-color: ${e.colors.primaryLight};
+    border-color: ${e.colors.primaryLight};
+  }
+
+  &:focus {
+    outline: 2px solid ${e.colors.primary};
+    outline-offset: 2px;
+  }
+`;x(Jt)`
+  background-color: transparent;
+  color: ${e.colors.primary};
+  border-color: ${e.colors.primary};
+
+  &:hover:not(:disabled) {
+    background-color: ${e.colors.primaryLight};
+    color: ${e.colors.secondary};
+  }
+
+  &:focus {
+    outline: 2px solid ${e.colors.primary};
+    outline-offset: 2px;
+  }
+`;x(Jt)`
+  background-color: ${e.colors.error};
+  color: ${e.colors.text.inverse};
+  border-color: ${e.colors.error};
+
+  &:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+
+  &:focus {
+    outline: 2px solid ${e.colors.error};
+    outline-offset: 2px;
+  }
+`;x(Jt)`
+  background-color: transparent;
+  color: ${e.colors.primary};
+  border: none;
+
+  &:hover:not(:disabled) {
+    color: ${e.colors.secondary};
+  }
+
+  &:focus {
+    outline: 2px solid ${e.colors.primary};
+    outline-offset: 2px;
+  }
+`;const wt=x.button`
+  padding: ${e.spacing.sm} ${e.spacing.lg};
+  border: 1px solid ${o=>o.$active?e.colors.primary:e.colors.border};
+  border-radius: ${e.borders.radius.base};
+  background: ${o=>o.$active?e.colors.primary:e.colors.secondary};
+  color: ${o=>o.$active?e.colors.secondary:e.colors.text.inverse};
+  cursor: pointer;
+  font-family: ${e.typography.fontFamily};
+  font-size: ${e.typography.size.sm};
+  font-weight: ${e.typography.fontWeight.medium};
+  transition: all ${e.transitions.base};
+  text-align: left;
+  width: 100%;
+
+  &:hover:not(:disabled) {
+    background: ${e.colors.primary};
+    color: ${e.colors.secondary};
+    border-color: ${e.colors.primary};
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: ${e.colors.secondary};
+    color: ${e.colors.neutral.dark};
+    border-color: ${e.colors.border};
+  }
+`;x.input`
+  padding: ${e.spacing.sm} ${e.spacing.md};
+  font-family: ${e.typography.fontFamily};
+  font-size: ${e.typography.size.sm};
+  border: ${e.borders.width.thin} solid ${e.colors.border};
+  border-radius: ${e.borders.radius.sm};
+  background-color: ${e.colors.background.surface};
+  color: ${e.colors.text.primary};
+  transition: all ${e.transitions.base};
+
+  &:focus {
+    outline: none;
+    border-color: ${e.colors.primary};
+    box-shadow: 0 0 0 3px ${e.colors.primaryLight}80;
+  }
+
+  &:disabled {
+    background-color: ${e.colors.neutral.light};
+    color: ${e.colors.neutral.dark};
+    cursor: not-allowed;
+  }
+`;x.select`
+  padding: ${e.spacing.sm} ${e.spacing.md};
+  font-family: ${e.typography.fontFamily};
+  font-size: ${e.typography.size.sm};
+  border: ${e.borders.width.thin} solid ${e.colors.border};
+  border-radius: ${e.borders.radius.sm};
+  background-color: ${e.colors.background.surface};
+  color: ${e.colors.text.primary};
+  cursor: pointer;
+  transition: all ${e.transitions.base};
+
+  &:focus {
+    outline: none;
+    border-color: ${e.colors.primary};
+    box-shadow: 0 0 0 3px ${e.colors.primaryLight}80;
+  }
+
+  &:disabled {
+    background-color: ${e.colors.neutral.light};
+    color: ${e.colors.neutral.dark};
+    cursor: not-allowed;
+  }
+`;x.textarea`
+  padding: ${e.spacing.md};
+  font-family: ${e.typography.fontFamily};
+  font-size: ${e.typography.size.sm};
+  border: ${e.borders.width.thin} solid ${e.colors.border};
+  border-radius: ${e.borders.radius.sm};
+  background-color: ${e.colors.background.surface};
+  color: ${e.colors.text.primary};
+  transition: all ${e.transitions.base};
+  resize: vertical;
+
+  &:focus {
+    outline: none;
+    border-color: ${e.colors.primary};
+    box-shadow: 0 0 0 3px ${e.colors.primaryLight}80;
+  }
+
+  &:disabled {
+    background-color: ${e.colors.neutral.light};
+    color: ${e.colors.neutral.dark};
+    cursor: not-allowed;
+  }
+`;const vr=x.label`
+  display: block;
+  font-family: ${e.typography.fontFamily};
+  font-size: ${e.typography.size.sm};
+  font-weight: ${e.typography.fontWeight.medium};
+  color: ${e.colors.text.primary};
+  margin-bottom: ${e.spacing.xs};
+`;x.div`
+  background-color: ${e.colors.background.surface};
+  border: ${e.borders.width.thin} solid ${e.colors.border};
+  border-radius: ${e.borders.radius.lg};
+  padding: ${e.spacing.lg};
+  box-shadow: ${e.shadows.sm};
+  transition: all ${e.transitions.base};
+
+  &:hover {
+    box-shadow: ${e.shadows.md};
+  }
+`;x.div`
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 ${e.spacing.lg};
+`;x.div`
+  display: flex;
+  flex-direction: ${o=>o.direction||"row"};
+  align-items: ${o=>o.align||"center"};
+  justify-content: ${o=>o.justify||"flex-start"};
+  gap: ${o=>o.gap||e.spacing.md};
+`;x.div`
+  display: grid;
+  grid-template-columns: repeat(${o=>o.columns||1}, 1fr);
+  gap: ${o=>o.gap||e.spacing.lg};
+`;const dt=x.h1`
+  font-family: ${e.typography.fontFamily};
+  font-weight: ${e.typography.fontWeight.medium};
+  color: ${e.colors.text.primary};
+  margin: 0;
+  line-height: ${e.typography.lineHeight.tight};
+`;x(dt)`
+  font-size: ${e.typography.heading.h1.fontSize};
+  letter-spacing: ${e.typography.heading.h1.letterSpacing};
+`;x(dt)`
+  font-size: ${e.typography.heading.h2.fontSize};
+`;const Wn=x(dt)`
+  font-size: ${e.typography.heading.h3.fontSize};
+`;x(dt)`
+  font-size: ${e.typography.heading.h4.fontSize};
+`;x(dt)`
+  font-size: ${e.typography.heading.h5.fontSize};
+`;x(dt)`
+  font-size: ${e.typography.heading.h6.fontSize};
+`;const Sr=x.p`
+  font-family: ${e.typography.fontFamily};
+  font-size: ${o=>o.size||e.typography.size.base};
+  font-weight: ${o=>o.weight||e.typography.fontWeight.regular};
+  color: ${o=>o.color||e.colors.text.primary};
+  margin: 0;
+  line-height: ${e.typography.lineHeight.normal};
+`;x(Sr)`
+  font-size: ${e.typography.size.sm};
+  color: ${e.colors.text.secondary};
+`;const Ir=x.div`
+  background-color: ${o=>o.bg||e.colors.background.surface};
+  border: ${e.borders.width.thin} solid ${e.colors.border};
+  border-radius: ${e.borders.radius.lg};
+  padding: ${e.spacing.lg};
+  display: flex;
+  flex-direction: column;
+  gap: ${e.spacing.md};
+`;x(Ir)`
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  min-width: 280px;
+`;x.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${e.spacing.sm};
+`;x.span`
+  display: inline-flex;
+  padding: ${e.spacing.xs} ${e.spacing.md};
+  border-radius: ${e.borders.radius.full};
+  font-size: ${e.typography.size.xs};
+  font-weight: ${e.typography.fontWeight.medium};
+  background-color: ${o=>{switch(o.variant){case"success":return e.colors.success;case"error":return e.colors.error;case"warning":return e.colors.warning;case"info":return e.colors.info;default:return e.colors.primary}}};
+  color: ${e.colors.text.inverse};
+`;x.hr`
+  border: none;
+  border-top: ${e.borders.width.thin} solid ${e.colors.border};
+  margin: ${e.spacing.md} 0;
+`;x.div`
+  height: ${o=>o.size||e.spacing.md};
+`;const Cr=x.div`
+  min-height: 100vh;
+  background-color: ${e.colors.background.default};
+  color: ${e.colors.text.primary};
+  font-family: ${e.typography.fontFamily};
+  display: flex;
+  flex-direction: column;
+`,jr=x.header`
+  padding: ${e.spacing.lg};
+  border-bottom: ${e.borders.width.thin} solid ${e.colors.border};
+  background-color: ${e.colors.secondary};
+  color: ${e.colors.text.inverse};
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+`,Ar=x.div`
+  flex: 1;
+`,Mr=x.h1`
+  margin: 0;
+  font-size: ${e.typography.heading.h2.fontSize};
+  font-weight: ${e.typography.fontWeight.medium};
+`,Rr=x.p`
+  margin: ${e.spacing.xs} 0 ${e.spacing.md};
+  color: ${e.colors.neutral.light};
+  font-size: ${e.typography.size.sm};
+`,Er=x.div`
+  display: flex;
+  gap: ${e.spacing.md};
+  align-items: center;
+`,_r=x.div`
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+`;x.div`
+  display: flex;
+  align-self: center;
+  justify-content: center;
+  padding: 0 ${e.spacing.lg};
+`;const Tr=x.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${e.spacing.sm};
+  padding: ${e.spacing.md};
+  margin: 0 0 ${e.spacing.sm} 0;
+  background: ${e.colors.background.surface};
+  border: ${e.borders.width.thin} solid ${e.colors.border};
+  border-radius: ${e.borders.radius.lg};
+  width: 100%;
+`,Pr=x.a`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1;
+  padding: ${e.spacing.sm} ${e.spacing.lg};
+  border-radius: ${e.borders.radius.base};
+  background-color: ${e.colors.primary};
+  color: ${e.colors.text.inverse};
+  font-weight: ${e.typography.fontWeight.medium};
+  text-decoration: none;
+  white-space: nowrap;
+
+  &:hover {
+    background-color: ${e.colors.primaryLight};
+  }
+`,Dr=x.img`
+  width: 8em;
+  height: 8em;
+  margin-right:20px;
+  border-radius: 50%;
+  object-fit: cover;
+  background-color: ${e.colors.secondary};
+  opacity: ${o=>o.$loaded?1:0};
+  transition: opacity ${e.transitions.base};
+`,_t=x.img`
+  // width: 4em;
+  height: 4em;
+  margin-right:20px;
+  vertical-align: middle;
+  // border-radius: 50%;
+  object-fit: cover;
+  background-color: ${e.colors.secondary};
+  opacity: ${o=>o.$loaded?1:0};
+  transition: opacity ${e.transitions.base};
+`,Ur=x.main`
+  display: flex;
+  gap: ${e.spacing.xl};
+  padding: ${e.spacing.xl};
+  align-items: flex-start;
+  flex: 1;
+  min-width: 1400px;
+  overflow: hidden;
+`,zr=x.aside`
+  flex-shrink: 0;
+  width: 15%;
+  min-width: 280px;
+`,Or=x.section`
+  flex: 1;
+  min-width: 700px;
+  overflow: visible;
+  min-height: 70vh;
+  background-color: ${e.colors.background.surface};
+  border-radius: ${e.borders.radius.lg};
+  box-shadow: ${e.shadows.sm};
+`,Lr=x.aside`
+  flex-shrink: 0;
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: ${e.spacing.lg};
+  max-height: calc(100vh - 120px);
+  min-height: 0;
+  overflow-y: auto;
+`,yn=x.header`
+  padding: ${e.spacing.lg};
+  border-bottom: ${e.borders.width.thin} solid ${e.colors.border};
+  background-color: ${e.colors.secondary};
+  color: ${e.colors.text.inverse};
+  display: flex;
+  flex-direction: column;
+  gap: ${e.spacing.md};
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+
+  p {
+    margin: 0;
+  }
+
+  // p:first-child {
+  //   text-align: center;
+  // }
+
+  // p:not(:first-child) {
+  //   align-self: flex-start;
+  //   text-align: left;
+  // }
+`,ct=x.a`
+  color: ${e.colors.primary};
+  text-decoration: none;
+  &:hover {
+    text-decoration: underline;
+    color: ${e.colors.primaryLight};
+  }
+`,Br=x.div`
+  display: inline-block;
+`,xn=$r,Hr="Login to Zooniverse",Fr="Logout of Zooniverse";function Nr(){const{token:o,login:t,logout:n}=Gt();return a.jsxs(Br,{children:[!o&&a.jsx(xn,{onClick:t,children:Hr}),o&&a.jsx(xn,{onClick:n,children:Fr})]})}const Wr=x.div`
+  display: flex;
+  align-items: center;
+  gap: ${e.spacing.sm};
+`,Yr=x.img`
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid ${e.colors.text.inverse};
+`,Kr=x.div`
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid ${e.colors.text.inverse};
+  background-color: ${e.colors.neutral.dark};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  svg {
+    width: 20px;
+    height: 20px;
+    color: ${e.colors.text.inverse};
+  }
+`,qr=x.span`
+  font-size: ${e.typography.size.sm};
+  font-weight: ${e.typography.fontWeight.medium};
+  color: ${e.colors.text.inverse};
+  white-space: nowrap;
+`,bn=20;function Xr(){const{user:o,isLoading:t}=Xe();return!o||t?null:a.jsxs(Wr,{children:[o.avatar_url?a.jsx(Yr,{src:o.avatar_url,alt:o.display_name||o.login,title:o.display_name||o.login}):a.jsx(Kr,{title:o.display_name||o.login,children:a.jsxs("svg",{viewBox:"0 0 24 24",fill:"none",stroke:"currentColor",strokeWidth:"2",strokeLinecap:"round",strokeLinejoin:"round",width:bn,height:bn,children:[a.jsx("path",{d:"M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"}),a.jsx("circle",{cx:"12",cy:"7",r:"4"})]})}),a.jsx(qr,{children:o.display_name||o.login})]})}const ne={detected:"#17eb81",userCreated:"#008cff",saved:"#c77dff",previouslyInspected:"#859cf6",previouslyAnnotated:"#ffcd44",repeatedlyAnnotated:"#ff9844"},Ie={inProgress:[5,5],previouslyAnnotated:[]},Zr=[{color:ne.saved,label:"Saved box (ready to submit)"},{color:ne.previouslyInspected,label:"Previously inspected box"},{color:ne.previouslyInspected,label:"Previously inspected box with unsaved edits",dash:Ie.inProgress},{color:ne.userCreated,label:"Volunteer-created box"},{color:ne.userCreated,label:"Volunteer-created box with unsaved edits",dash:Ie.inProgress},{color:ne.previouslyAnnotated,label:"Box has one other classification",dash:Ie.previouslyAnnotated},{color:ne.previouslyAnnotated,label:"Box has one other classification and unsaved edits",dash:Ie.inProgress},{color:ne.repeatedlyAnnotated,label:"Box has several other classifications",dash:Ie.previouslyAnnotated},{color:ne.repeatedlyAnnotated,label:"Box has several other classifications and unsaved edits",dash:Ie.inProgress}],Gr="https://caesar.zooniverse.org/graphql",go={staging:Eo,defaultToolSpec:{type:"rectangle",color:ne.detected,label:"Unknown artifact"}},Jr=Hn`
+    query FetchSubjectReductions($workflowId: ID!, $subjectId: ID!, $reducerKey: String!) {
+        workflow(id: $workflowId) {
+            subject_reductions(subjectId: $subjectId, reducerKey: $reducerKey) {
+                data
+            }
+        }
+    }
+`,Vr=Hn`
+    query FetchUserReductions($workflowId: ID!, $userId: ID!, $reducerKey: String) {
+        workflow(id: $workflowId) {
+            user_reductions(userId: $userId, reducerKey: $reducerKey) {
+                data
+            }
+        }
+    }
+`;function Qr(o,t){const n=Gr;return new Xs(n,{headers:sr(o,"application/json")})}async function kn(o,t,n,s){var r;if(!t)return v.app("fetchCaesarReductions: reducerKey is required"),[];try{if(!s||!n)throw new Error(`Invalid workflow or subject ID: workflowID=${s}, subjectID=${n}`);console.debug("Fetching Caesar reductions:",{workflowID:s,subjectID:n,reducerKey:t});const i=await o.request(Jr,{workflowId:s,subjectId:n,reducerKey:t});return console.debug("Caesar reductions response:",i),((r=i.workflow)==null?void 0:r.subject_reductions)??[]}catch(i){const c=i instanceof Error?i.message:String(i),h=i instanceof Error?i:{error:i};return v.app(`Failed to fetch Caesar reductions for subject ${n}:`,{message:c,details:h,stack:i instanceof Error?i.stack:void 0}),[]}}async function ea(o,t,n,s){var r;try{if(!n||!t)throw new Error(`Invalid workflow or user ID: workflowID=${n}, userID=${t}`);return((r=(await o.request(Vr,{workflowId:n,userId:t,reducerKey:s??null})).workflow)==null?void 0:r.user_reductions)??[]}catch(i){const c=i instanceof Error?i.message:String(i);return v.app(`Failed to fetch Caesar user reductions for user ${t}:`,{message:c,details:i instanceof Error?i:{error:i},stack:i instanceof Error?i.stack:void 0}),[]}}function ta(o,t){return d.useMemo(()=>Qr(o),[o])}const Fe=[30,144,255],Tt={BRUSH_MODE:"add",BRUSH_RADIUS:20,ENABLE_BRUSH:!1,ADD_COLOR:`rgba(${Fe[0]},${Fe[1]},${Fe[2]},0.6)`},Ue={STROKE_ALPHA:.2,SELECTED_ALPHA:.45,LINE_WIDTH_MULTIPLIER:4,ERASE_COMPOSITE:"destination-out",ADD_COMPOSITE:"lighter",ERASE_STROKE_COLOR:"rgba(0,0,0,1)",LINE_CAP:"round",LINE_JOIN:"round"},Pt={RED:30,GREEN:144,BLUE:255,ALPHA:.6};function oa(o){const{data:t,width:n,height:s}=o,r=n*s,i=new Uint8Array(r);for(let c=0,h=0;c<t.length;c+=4,h++){const l=t[c+2];i[h]=l>0?1:0}return i}function na(o,t,n,s,r,i,c,h=[0,255,200]){const l=new Uint8ClampedArray(t*n*4);var p=0;for(let u=n-c;u<n-c+r;u++)for(let y=i;y<i+s;y++){const g=t*u+y,b=o[p];l[4*g]=h[0],l[4*g+1]=h[1],l[4*g+2]=h[2],l[4*g+3]=b>0?255*1:0,p++}return new ImageData(l,t,n)}function sa(o,t,n,s,r,i,c,h=[0,255,200]){const l=i,p=n-c,u=Math.max(0,l),y=Math.max(0,p),g=Math.min(t,l+s),b=Math.min(n,p+r);if(g<=u||b<=y)return{imageData:new ImageData(1,1),bounds:null,canvasWidth:t,canvasHeight:n};const m=g-u,S=b-y,f=new ImageData(m,S);let w=!1;for(let $=y;$<b;$++){const C=($-p)*s,A=($-y)*m;for(let j=u;j<g;j++){const R=o[C+j-l],z=(A+j-u)*4;f.data[z]=h[0],f.data[z+1]=h[1],f.data[z+2]=h[2],f.data[z+3]=R>0?255:0,w||(w=R>0)}}return{imageData:w?f:new ImageData(1,1),bounds:w?{x:u,y,width:m,height:S}:null,canvasWidth:t,canvasHeight:n}}function tt(o){const t=document.createElement("canvas");t.width=o.width,t.height=o.height;const n=t.getContext("2d");if(!n)throw new Error("Failed to get canvas context");return n.putImageData(o,0,0),t.toDataURL("image/png")}function wn(o){let t="";for(let n=0;n<o.length;n++)t+=String.fromCharCode(o[n]);return btoa(t)}function Dt(o){const t=atob(o),n=new Uint8Array(t.length);for(let s=0;s<t.length;s++)n[s]=t.charCodeAt(s);return n}async function ra(o){const t=new CompressionStream("gzip"),n=t.writable.getWriter();n.write(new Uint8Array(o)),n.close();const s=await new Response(t.readable).arrayBuffer();return new Uint8Array(s)}async function $n(o){const t=new DecompressionStream("gzip"),n=t.writable.getWriter();n.write(new Uint8Array(o)),n.close();const s=await new Response(t.readable).arrayBuffer();return new Uint8Array(s)}class kt{constructor(t,n,s,r="array",i="composite",c){un(this,"_preparedJson",null);this.width=t,this.height=n,this.mask=s,this.encoding=r,this.maskType=i,this.placement=c}get header(){const t=this.placement??{imageWidth:this.width,imageHeight:this.height,x0:0,y0:0};return{width:this.width,height:this.height,image_width:t.imageWidth,image_height:t.imageHeight,mask_x0:t.x0,mask_y0:t.y0}}async prepareForJson(){if(this.encoding==="array")this._preparedJson={...this.header,encoding:this.encoding,maskType:this.maskType,mask:Array.from(this.mask)};else if(this.encoding==="base64")this._preparedJson={...this.header,encoding:this.encoding,maskType:this.maskType,mask:wn(this.mask)};else if(this.encoding==="gzip-base64"){const t=await ra(this.mask);this._preparedJson={...this.header,encoding:this.encoding,maskType:this.maskType,mask:wn(t)}}}toJSON(){if(!this._preparedJson)throw new Error("CompressedMask must be prepared first: await mask.prepareForJson()");return this._preparedJson}static async decodeMaskArray(t){if(!t.mask||!t.mask_width||!t.mask_height||!t.image_width||!t.image_height)throw new Error(`Supplied JSON must contain \`mask\`, \`mask_width\`, \`mask_height\`, \`image_width\` and \`image_height\` attribute: ${JSON.stringify(t)}`);t.encoding||(t.encoding="gzip-base64");let n;if(t.encoding=="array")n=new Uint8Array(JSON.parse(t.mask));else if(t.encoding=="base64")n=Dt(t.mask);else if(t.encoding=="gzip-base64")n=await $n(Dt(t.mask));else throw new Error(`Usupported encoding ${t.encoding} supplied`);return n}static async imageDatafromJSON(t){const n=await kt.decodeMaskArray(t);return na(n,t.image_width,t.image_height,t.mask_width,t.mask_height,t.mask_x0||0,t.mask_y0||0,[...Fe])}static async maskSnapshotfromJSON(t){const n=await kt.decodeMaskArray(t);return sa(n,t.image_width,t.image_height,t.mask_width,t.mask_height,t.mask_x0||0,t.mask_y0||0,[...Fe])}static async snapshotFromExportedJSON(t){const{width:n,height:s,image_width:r,image_height:i,mask_x0:c,mask_y0:h,encoding:l,mask:p}=t,u=m=>typeof m=="number"&&Number.isInteger(m)&&m>=0;if(!u(n)||!u(s)||!u(r)||!u(i)||r===0||i===0)throw new Error("Exported mask has invalid dimensions");if(n===0||s===0)return{imageData:new ImageData(1,1),bounds:null,canvasWidth:r,canvasHeight:i};if(!u(c)||!u(h)||c+n>r||h+s>i)throw new Error("Exported mask does not fit inside its image");let y;if(l==="array"&&Array.isArray(p))y=Uint8Array.from(p);else if(l==="base64"&&typeof p=="string")y=Dt(p);else if(l==="gzip-base64"&&typeof p=="string")y=await $n(Dt(p));else throw new Error(`Unsupported exported mask encoding: ${String(l)}`);if(y.length!==n*s)throw new Error("Exported mask data does not match its dimensions");const g=new ImageData(n,s);let b=!1;for(let m=0;m<y.length;m++){const S=m*4;g.data[S]=Fe[0],g.data[S+1]=Fe[1],g.data[S+2]=Fe[2],g.data[S+3]=y[m]>0?255:0,b||(b=y[m]>0)}return b?{imageData:g,bounds:{x:c,y:h,width:n,height:s},canvasWidth:r,canvasHeight:i}:{imageData:new ImageData(1,1),bounds:null,canvasWidth:r,canvasHeight:i}}}async function vn(o,t="gzip-base64",n="composite"){const{bounds:s,canvasWidth:r,canvasHeight:i}=o,c=s?oa(o.imageData):new Uint8Array(0),h=new kt(s?s.width:0,s?s.height:0,c,t,n,{imageWidth:r,imageHeight:i,x0:(s==null?void 0:s.x)??0,y0:(s==null?void 0:s.y)??0});return await h.prepareForJson(),h}function aa(o){const t=o.match(/rgba?\((\d+),\s*(\d+),\s*(\d+),?\s*([\d\.]+)?\)/);return t?[Number(t[1]),Number(t[2]),Number(t[3]),Math.floor(Number(t[4]??1)*255)]:[Pt.RED,Pt.GREEN,Pt.BLUE,Math.floor(Pt.ALPHA*255)]}function ia(o){if(o instanceof ImageData)return{data:o,width:o.width,height:o.height};const t=o.width||o.naturalWidth,n=o.height||o.naturalHeight,s=document.createElement("canvas");s.width=t,s.height=n;const r=s.getContext("2d");return r.drawImage(o,0,0),{data:r.getImageData(0,0,t,n),width:t,height:n}}function ca(o,t,n){const[s,r,i]=n,c=o.data,h=t.data;for(let l=0;l<c.length;l+=4){const p=h[l+3]||c[l+3];c[l]=s,c[l+1]=r,c[l+2]=i,c[l+3]=p}return o}function la(o,t,n){const s=o.data,r=Math.floor(n*255);for(let i=0;i<s.length;i+=4)s[i+3]>0&&(s[i]=t[0],s[i+1]=t[1],s[i+2]=t[2],s[i+3]=r)}function Sn(o,t){const n=o.data,s=Math.floor(t*255);for(let r=0;r<n.length;r+=4)n[r+3]>0&&(n[r+3]=s)}function jo(o,t){if(!o)return t;if(!t)return o;const n=Math.min(o.x,t.x),s=Math.min(o.y,t.y),r=Math.max(o.x+o.width,t.x+t.width),i=Math.max(o.y+o.height,t.y+t.height);return{x:n,y:s,width:r-n,height:i-s}}function Yn(o,t,n){const s=Math.max(0,Math.min(o.x,t)),r=Math.max(0,Math.min(o.y,n)),i=Math.max(s,Math.min(o.x+o.width,t)),c=Math.max(r,Math.min(o.y+o.height,n));return{x:s,y:r,width:i-s,height:c-r}}function _o(o){const{data:t,width:n}=o;let s=1/0,r=-1/0,i=1/0,c=-1/0;for(let h=3;h<t.length;h+=4)if(t[h]>0){const l=(h-3)/4,p=l%n,u=l/n|0;p<s&&(s=p),p>r&&(r=p),u<i&&(i=u),u>c&&(c=u)}return r<0||r===-1/0?null:{x:s,y:i,width:r-s+1,height:c-i+1}}function Kn(o,t){const n=new ImageData(t.width,t.height),s=o.data,r=n.data;for(let i=0;i<t.height;i++){const c=((t.y+i)*o.width+t.x)*4,h=i*t.width*4;r.set(s.subarray(c,c+t.width*4),h)}return n}function da(o,t,n,s){const r=s?Yn(s,t,n):{x:0,y:0,width:t,height:n};if(r.width<=0||r.height<=0)return{imageData:new ImageData(1,1),bounds:null,canvasWidth:t,canvasHeight:n};const i=o.getImageData(r.x,r.y,r.width,r.height),c=_o(i);if(!c)return{imageData:new ImageData(1,1),bounds:null,canvasWidth:t,canvasHeight:n};const h={x:r.x+c.x,y:r.y+c.y,width:c.width,height:c.height};return{imageData:Kn(i,c),bounds:h,canvasWidth:t,canvasHeight:n}}function ua(o){const t=o.width,n=o.height,s=_o(o);return s?{imageData:Kn(o,s),bounds:s,canvasWidth:t,canvasHeight:n}:{imageData:new ImageData(1,1),bounds:null,canvasWidth:t,canvasHeight:n}}function Yt(o){const t=document.createElement("canvas");t.width=o.canvasWidth,t.height=o.canvasHeight;const n=t.getContext("2d");return o.bounds&&n.putImageData(o.imageData,o.bounds.x,o.bounds.y),n.getImageData(0,0,o.canvasWidth,o.canvasHeight)}function Ft(o,t){if(o.length===0||t<0)return null;const n=Math.min(t,o.length-1),s=o[n];if(s.type==="modifier_brush")return v.masks(`[getSimpleComposite] modifier_brush at index=${n}, using snapshot directly`),Yt(s);if(n===0)return v.masks("[getSimpleComposite] sam at index=0, single entry - expanding directly"),Yt(o[0]);v.masks(`[getSimpleComposite] sam at index=${n}, OR-compositing ${n+1} entries`);const{canvasWidth:r,canvasHeight:i}=o[0],c=new Uint8ClampedArray(r*i*4);for(let h=0;h<=n&&h<o.length;h++){const l=o[h].bounds;if(!l)continue;const p=o[h].imageData.data;for(let u=0;u<l.height;u++){const y=u*l.width*4,g=((l.y+u)*r+l.x)*4;for(let b=0;b<l.width*4;b++)c[g+b]|=p[y+b]}}return new ImageData(c,r,i)}function Nt(o,t){if(o.length===0||t<0)return null;const n=Math.min(t,o.length-1),s=o[n];if(s.type==="modifier_brush")return s;let r=null;for(let l=0;l<=n;l++)r=jo(r,o[l].bounds);const{canvasWidth:i,canvasHeight:c}=o[0];if(!r)return{imageData:new ImageData(1,1),bounds:null,canvasWidth:i,canvasHeight:c};const h=new ImageData(r.width,r.height);for(let l=0;l<=n;l++){const p=o[l],u=p.bounds;if(!u)continue;const y=p.imageData.data,g=u.x-r.x,b=u.y-r.y;for(let m=0;m<u.height;m++){const S=m*u.width*4,f=((b+m)*r.width+g)*4;for(let w=0;w<u.width*4;w++)h.data[f+w]|=y[S+w]}}return{imageData:h,bounds:r,canvasWidth:i,canvasHeight:c}}function ha(o,t){if(o.length===0||t<0)return null;const n=Math.min(t,o.length-1);return Ft(o,n)}function To(o){return(o==null?void 0:o.status)==="in_progress"}function In(o,t){return o.lastSavedHistoryIndex>=0&&t===o.lastSavedHistoryIndex?"committed":"in_progress"}function qn(o,t){const n=o.activePointsPerHistoryIndex;let r=n[t];if(!r){for(let i=Math.min(t-1,n.length-1);i>=0;i-=1)if(n[i]){r=n[i];break}}return r?r.map(i=>o.allSamPoints[i]).filter(i=>!!i):[]}function pa(o,t){return t.findIndex(n=>n.x===o.x&&n.y===o.y&&n.label===o.label)}function Cn(o){const t={};for(const r of o.annotations){if(r.type!=="point")continue;const i=String(r.annotationId??"-1");t[i]=(t[i]??0)+1}const n=new Set([...Object.keys(o.perAnnotationMasks),...Object.keys(t)]),s=[];for(const r of[...n].sort()){const i=o.perAnnotationMasks[r],c=(i==null?void 0:i.status)??"untouched",h=t[r]??0;h===0&&c==="untouched"||s.push(`${r}:${c}:${(i==null?void 0:i.historyIndex)??-1}:${h}`)}return s.join("|")}const mo=()=>({subjectId:null,imageUrl:null,imageDimensions:null,annotations:[],taskAnswers:{},debugImageUrl:null,debugMasks:null,maskSelectionInfo:null,debugCrop:null,debugPrompts:null,finishedAt:null,perAnnotationMasks:{},activeAnnotationId:null,globalCompositeMask:null,compositeExcludingActiveMask:null,userRects:{},nextUserRectId:-2,submittedWorkSignature:null,isRestoringWork:!1,startedAt:new Date().toISOString()}),P=Mo((o,t)=>({...mo(),setSubject:(n,s,r)=>o({...mo(),subjectId:n,imageUrl:s,imageDimensions:r??null,startedAt:new Date().toISOString()}),addAnnotation:n=>o(s=>({annotations:[...s.annotations,{...n,id:crypto.randomUUID()}]})),removeAnnotation:n=>o(s=>({annotations:s.annotations.filter(r=>(r.id??"")!==n)})),undoLastAnnotation:()=>{const{annotations:n}=t();if(n.length===0)return;const s=n[n.length-1];return o({annotations:n.slice(0,-1)}),s},clearAnnotations:(n,s)=>o(r=>{if(n===void 0&&s===void 0)return{annotations:[],debugImageUrl:null};const i=s?Array.isArray(s)?s:[s]:null;return{annotations:r.annotations.filter(h=>!!(i&&!i.includes(h.type)||n!==void 0&&(h.annotationId??"-1")!==n))}}),clearSamPoints:n=>o(s=>{const r=s.annotations.filter(i=>i.type==="point"&&(i.annotationId||"-1")===n).length;return v.history(`[clearSamPoints] annotationId=${n}, pointsCleared=${r}`),{annotations:s.annotations.filter(i=>!(i.type==="point"&&(i.annotationId||"-1")===n))}}),setTaskAnswer:(n,s)=>o(r=>({taskAnswers:{...r.taskAnswers,[n]:s}})),setDebugImage:n=>o({debugImageUrl:n}),setDebugMasks:(n,s,r,i)=>o({debugMasks:n,maskSelectionInfo:s,debugCrop:r||null,debugPrompts:i||null}),setActiveAnnotation:n=>o({activeAnnotationId:n}),setPerAnnotationMask:(n,s,r=null)=>o(i=>({perAnnotationMasks:{...i.perAnnotationMasks,[n]:{...i.perAnnotationMasks[n]||{history:[],historyIndex:-1,lastSavedHistoryIndex:-1},maskUrl:s,maskBounds:r}}})),setGlobalCompositeMask:n=>o({globalCompositeMask:n}),setCompositeExcludingActiveMask:n=>o({compositeExcludingActiveMask:n}),pushPerAnnotationMaskHistory:(n,s,r)=>o(i=>{var g,b,m;const c=i.perAnnotationMasks[n]||{maskUrl:null,history:[],historyIndex:-1,lastSavedHistoryIndex:-1},h=c.history.slice(0,c.historyIndex+1),l=h.length+1,p=h.length;v.store(`[pushPerAnnotationMaskHistory] annotationId=${n}, type=${s.type}, newHistoryLength=${l}, historyIndex=${p}`);const u=r??(s.type==="sam"?i.annotations.filter(S=>S.type==="point"&&String(S.annotationId??"-1")===String(n)).map(S=>({x:S.x,y:S.y,label:S.label})):void 0);let y=c.samPointHistory;if(u){let S=[...((g=c.samPointHistory)==null?void 0:g.allSamPoints)??[]];const f=u.map(A=>{const j=pa(A,S);return j!==-1?j:(S.push(A),S.length-1)}),$=[...((m=(b=c.samPointHistory)==null?void 0:b.activePointsPerHistoryIndex)==null?void 0:m.slice(0,c.historyIndex+1))??[]],C=$.length>0?$[$.length-1]:[];for(;$.length<p;)$.push([...C]);y={allSamPoints:S,activePointsPerHistoryIndex:[...$,f]},v.history(`[pushPerAnnotationMaskHistory] samPointHistory updated, historyIndex=${p}, pointCount=${u.length}, poolSize=${S.length}`)}else if(c.samPointHistory){const f=[...c.samPointHistory.activePointsPerHistoryIndex.slice(0,c.historyIndex+1)],w=f.length>0?f[f.length-1]:[];for(;f.length<p;)f.push([...w]);y={allSamPoints:c.samPointHistory.allSamPoints,activePointsPerHistoryIndex:[...f,[...w]]}}return{perAnnotationMasks:{...i.perAnnotationMasks,[n]:{...c,history:[...h,s],historyIndex:p,samPointHistory:y,status:"in_progress"}}}}),pushPerAnnotationMaskHistoryBatch:n=>o(s=>{const r={...s.perAnnotationMasks};for(const{annotationId:i,entry:c,maskUrl:h,toolIndex:l}of n){const p=r[i]||{maskUrl:null,history:[],historyIndex:-1,lastSavedHistoryIndex:-1},u=p.history.slice(0,p.historyIndex+1);r[i]={...p,history:[...u,c],historyIndex:u.length,maskUrl:h!==void 0?h:p.maskUrl,maskBounds:c.bounds,toolIndex:l??p.toolIndex}}return v.store(`[pushPerAnnotationMaskHistoryBatch] Pushed ${n.length} entries in a single update`),{perAnnotationMasks:r}}),undoPerAnnotationMask:n=>{const r=t().perAnnotationMasks[n];if(!r||r.historyIndex<0)return v.store(`[undoPerAnnotationMask] annotationId=${n}, cannotUndo=true (historyIndex=${(r==null?void 0:r.historyIndex)??"N/A"})`),null;const i=r.historyIndex-1;v.store(`[undoPerAnnotationMask] annotationId=${n}, oldIndex=${r.historyIndex}, newIndex=${i}, historyLength=${r.history.length}`);let c=null,h=null;if(i>=0){const l=Nt(r.history,i);l&&(c=tt(l.imageData),h=l.bounds)}return o(l=>({perAnnotationMasks:{...l.perAnnotationMasks,[n]:{...l.perAnnotationMasks[n],historyIndex:i,maskUrl:c,maskBounds:h,status:In(l.perAnnotationMasks[n],i)}}})),v.history(`[undoPerAnnotationMask] annotationId=${n}, historyIndex=${r.historyIndex} -> ${i}`),r.samPointHistory&&t().syncAnnotationsToHistoryIndex(n),i>=0?r.history[i]:null},redoPerAnnotationMask:n=>{const r=t().perAnnotationMasks[n];if(!r||r.historyIndex>=r.history.length-1)return v.store(`[redoPerAnnotationMask] annotationId=${n}, cannotRedo=true (historyIndex=${(r==null?void 0:r.historyIndex)??"N/A"}, historyLength=${(r==null?void 0:r.history.length)??"N/A"})`),null;const i=r.historyIndex+1;v.store(`[redoPerAnnotationMask] annotationId=${n}, oldIndex=${r.historyIndex}, newIndex=${i}, historyLength=${r.history.length}`);let c=null,h=null;if(i<r.history.length){const l=Nt(r.history,i);l&&(c=tt(l.imageData),h=l.bounds)}return o(l=>({perAnnotationMasks:{...l.perAnnotationMasks,[n]:{...l.perAnnotationMasks[n],historyIndex:i,maskUrl:c,maskBounds:h,status:In(l.perAnnotationMasks[n],i)}}})),v.history(`[redoPerAnnotationMask] annotationId=${n}, historyIndex=${r.historyIndex} -> ${i}`),r.samPointHistory&&t().syncAnnotationsToHistoryIndex(n),r.history[i]},syncAnnotationsToHistoryIndex:n=>{o(s=>{v.history("[syncAnnotationsToHistoryIndex] Called");const r=s.perAnnotationMasks[n];if(!(r!=null&&r.samPointHistory))return v.history("[syncAnnotationsToHistoryIndex] No SAM point history"),s;const i=qn(r.samPointHistory,r.historyIndex);v.history(`[syncAnnotationsToHistoryIndex] annotationId=${n}, historyIndex=${r.historyIndex}, activePointsCount=${i.length}`);const c=s.annotations.filter(p=>!(p.type==="point"&&(p.annotationId||"-1")===n)),h=s.annotations.length-c.length,l=i.map((p,u)=>({type:"point",x:p.x,y:p.y,label:p.label,annotationId:n,id:`${n}-point-${u}`}));return v.history(`[syncAnnotationsToHistoryIndex] removed=${h} points, adding=${l.length} points`),{...s,annotations:[...c,...l]}})},saveMask:n=>o({activeAnnotationId:null}),markPerAnnotationMaskSaved:n=>o(s=>{const r=s.perAnnotationMasks[n];return r?{perAnnotationMasks:{...s.perAnnotationMasks,[n]:{...r,lastSavedHistoryIndex:r.historyIndex,status:"committed"}}}:s}),clearPerAnnotationMaskHistory:n=>o(s=>(v.store(`[clearPerAnnotationMaskHistory] Clearing all history for ${n}`),{perAnnotationMasks:{...s.perAnnotationMasks,[n]:{maskUrl:null,history:[],historyIndex:-1,lastSavedHistoryIndex:-1,status:"untouched"}}})),addUserRect:n=>{const s=t(),r=String(s.nextUserRectId);return o(i=>({userRects:{...i.userRects,[r]:{...n,markLabel:"Volunteer-defined object",markColour:ne.userCreated,markStroke:"dashed"}},nextUserRectId:i.nextUserRectId-1})),v.store(`[addUserRect] Created rect ${r}: x=${n.x}, y=${n.y}, width=${n.width}, height=${n.height}`),r},updateUserRect:(n,s)=>{o(r=>{const i=r.userRects[n];return{userRects:{...r.userRects,[n]:{...i,...s}}}}),v.store(`[updateUserRect] Updated rect ${n}: x=${s.x}, y=${s.y}, width=${s.width}, height=${s.height}`)},removeUserRect:n=>{o(s=>{const{[n]:r,...i}=s.userRects,{[n]:c,...h}=s.perAnnotationMasks;return{userRects:i,perAnnotationMasks:h,annotations:s.annotations.filter(l=>String(l.annotationId??"-1")!==n),activeAnnotationId:s.activeAnnotationId===n?null:s.activeAnnotationId}}),v.store(`[removeUserRect] Removed rect ${n}`)},clearUserRects:()=>{o({userRects:{},nextUserRectId:-2}),v.store("[clearUserRects] Cleared all user rects")},buildPanoptesAnnotations:async()=>{const{annotations:n,taskAnswers:s,perAnnotationMasks:r,userRects:i}=t(),c=[],h=[],l=new Set(n.filter(y=>y.type==="point").map(y=>String(y.annotationId??"-1"))),p=new Set([...Object.keys(r).map(y=>String(y)),...l]);for(const y of p){const g=r[y],m=n.filter(A=>A.type==="point"&&String(A.annotationId??"-1")===y).map((A,j)=>({x:A.x,y:A.y,label:A.label,pointId:j})),S=g!=null&&g.samPointHistory?{allSamPoints:g.samPointHistory.allSamPoints,activePointsPerHistoryIndex:g.samPointHistory.activePointsPerHistoryIndex}:{allSamPoints:m.map(({x:A,y:j,label:R})=>({x:A,y:j,label:R})),activePointsPerHistoryIndex:m.length>0?[m.map((A,j)=>j)]:[]},f=(g==null?void 0:g.status)??"untouched";if(m.length===0&&f==="untouched")continue;let w="",$="";if(g&&g.history.length>0){const A=g.history.slice(0,g.historyIndex+1);for(let j=A.length-1;j>=0;j--){const R=A[j];if(R.type==="sam"){w=await vn(R,"gzip-base64","sam"),$=R.modelId;break}}}let C="";if(g&&g.history.length>0){const A=g.history.slice(0,g.historyIndex+1),j=Nt(A,g.historyIndex);j&&(C=await vn(j,"gzip-base64","composite"))}h.push({annotationId:y,samPoints:m,samPointHistory:S,latestSamMask:w,compositeMask:C,samModelId:$,status:f==="untouched"?"in_progress":f,...(g==null?void 0:g.toolIndex)!==void 0?{toolIndex:g.toolIndex}:{},...i[y]?{userRect:i[y]}:{}})}h.length>0&&c.push({task:"rect-annotations",value:h});let u=0;return n.forEach(y=>{y.type!=="point"&&c.push({task:`drawing-${u++}`,value:ga(y)})}),Object.entries(s).forEach(([y,g])=>{c.push({task:y,value:g})}),c},buildPanoptesClassification:async(n=Ro,s=lt)=>{if(!n||!s)throw new Error("Project ID and Workflow ID are required to build classification");const{subjectId:r,startedAt:i}=t();if(!r)throw new Error("No subject is set for classification");return{metadata:{user_agent:navigator.userAgent,started_at:i,finished_at:new Date().toISOString(),user_language:navigator.language,workflow_version:"1.1"},annotations:await t().buildPanoptesAnnotations(),links:{subjects:t().subjectId?[t().subjectId]:[],workflow:s,project:n}}},setRestoringWork:n=>o({isRestoringWork:n}),restoreRect:({annotationId:n,entries:s,maskUrl:r,samPoints:i,status:c,toolIndex:h,userRect:l})=>o(p=>{const u=p.perAnnotationMasks[n],y=u?u.history.slice(0,u.historyIndex+1):[],g=[...y,...s],b=g.length-1,m=g[b],S=i.length>0?{allSamPoints:i,activePointsPerHistoryIndex:g.map(($,C)=>C>=y.length||y.length===0?i.map((A,j)=>j):[])}:u==null?void 0:u.samPointHistory,f=p.annotations.filter($=>!($.type==="point"&&String($.annotationId??"-1")===n)),w=i.map($=>({type:"point",x:$.x,y:$.y,label:$.label,annotationId:n,id:crypto.randomUUID()}));return{annotations:[...f,...w],perAnnotationMasks:{...p.perAnnotationMasks,[n]:{...u??{maskUrl:null,history:[],historyIndex:-1,lastSavedHistoryIndex:-1},history:g,historyIndex:b,lastSavedHistoryIndex:b,maskUrl:r,maskBounds:(m==null?void 0:m.bounds)??null,toolIndex:h??(u==null?void 0:u.toolIndex),samPointHistory:S,status:c}},...l?{userRects:{...p.userRects,[n]:l},nextUserRectId:Math.min(p.nextUserRectId,Number(n)-1)}:{}}}),markWorkSubmitted:()=>o({submittedWorkSignature:Cn(t())}),hasUnsubmittedWork:()=>{const n=t(),s=Cn(n);return s!==""&&s!==n.submittedWorkSignature},reset:()=>o(mo())}));function ga(o){switch(o.type){case"point":return{type:"point",x:o.x,y:o.y,label:o.label};case"polyline":return{type:"polyline",points:o.points};case"brush":return{type:"brush",strokes:o.strokes};case"sam2_mask":return{type:"sam2_mask",prompts:o.prompts,maskUrl:o.maskUrl};default:return o}}const re=Mo(o=>({annotations:[],workflowBoxTypes:[],previouslyInspectedBoxIds:[],selectedAnnotationId:null,isLoading:!1,error:null,setAnnotations:t=>o({annotations:t,error:null}),setWorkflowBoxTypes:t=>o({workflowBoxTypes:t}),setPreviouslyInspectedBoxIds:t=>o({previouslyInspectedBoxIds:[...new Set(t.filter(n=>n!=="-1"))]}),markBoxesSubmitted:t=>o(n=>({previouslyInspectedBoxIds:[...new Set([...n.previouslyInspectedBoxIds,...t.filter(s=>s!=="-1")])]})),clearAnnotations:()=>o({annotations:[],workflowBoxTypes:[],previouslyInspectedBoxIds:[],error:null}),setSelectedAnnotationId:t=>o({selectedAnnotationId:t}),setLoading:t=>o({isLoading:t}),setError:t=>o({error:t})})),ma="rect-annotations",jn="Volunteer-defined object";function Vt(o){return typeof o=="object"&&o!==null}function Kt(o){return typeof o=="number"&&Number.isFinite(o)}function fa(o){return Array.isArray(o)?o.flatMap(t=>!Vt(t)||!Kt(t.x)||!Kt(t.y)?[]:t.label!==0&&t.label!==1?[]:[{x:t.x,y:t.y,label:t.label}]):[]}function ya(o){return o==="committed"?"committed":"in_progress"}async function An(o){if(!Vt(o))return null;try{return await kt.snapshotFromExportedJSON(o)}catch(t){return console.warn("Could not decode a previously saved mask; skipping it",t),null}}function xa(o,t){const n=o.userRect;if(Vt(n)&&[n.x,n.y,n.width,n.height].every(Kt))return{x:n.x,y:n.y,width:n.width,height:n.height,markLabel:typeof n.markLabel=="string"?n.markLabel:jn,markColour:typeof n.markColour=="string"?n.markColour:ne.userCreated,markStroke:typeof n.markStroke=="string"?n.markStroke:"solid"};if(t)return{...t,markLabel:jn,markColour:ne.userCreated,markStroke:"solid"}}async function ba(o){const t=o.find(s=>s.task===ma);if(!t||!Array.isArray(t.value))return[];const n=[];for(const s of t.value){if(!Vt(s)||typeof s.annotationId!="string"&&typeof s.annotationId!="number")continue;const r=String(s.annotationId),i=await An(s.latestSamMask),c=await An(s.compositeMask),h=fa(s.samPoints),l=c??i,p=Number(r)<-1,u=[];if(i&&u.push({type:"sam",modelId:typeof s.samModelId=="string"&&s.samModelId?s.samModelId:"sam2",...i}),c&&u.push({type:"modifier_brush",mode:"restored",...c}),u.length===0&&h.length===0&&!p)continue;const y=p?xa(s,(l==null?void 0:l.bounds)??null):void 0;p&&!y||n.push({annotationId:r,entries:u,maskUrl:l!=null&&l.bounds?tt(l.imageData):null,samPoints:h,status:ya(s.status),toolIndex:Kt(s.toolIndex)?s.toolIndex:void 0,userRect:y})}return n}function ka(o,t,n){return dr(o,t,n,Eo).catch(s=>(console.warn("Could not check for previous work",s),null))}async function wa(o,t){if(t)try{const n=await ba(t.annotations??[]);if(P.getState().subjectId!==o)return;const s=new Set(re.getState().annotations.flatMap(h=>h.toolType==="rectangle"?[String(h.markId)]:[])),{restoreRect:r,markWorkSubmitted:i}=P.getState(),c=[];for(const h of n){const l=Number(h.annotationId)<-1;!l&&h.annotationId!=="-1"&&!s.has(h.annotationId)||(r(h),!l&&h.annotationId!=="-1"&&c.push(h.annotationId))}c.length>0&&re.getState().markBoxesSubmitted(c),i()}catch(n){console.warn("Could not restore previous work",n)}}const Mn=x.div`
+  display: inline-flex;
+  flex-direction: column;
+  gap: ${e.spacing.sm};
+`,$a=x.div`
+  display: flex;
+  align-items: center;
+  gap: ${e.spacing.sm};
+  flex-wrap: wrap;
+`,fo=x.button`
+  padding: ${e.spacing.sm} ${e.spacing.lg};
+  background: ${e.colors.secondary};
+  border: 1px solid ${e.colors.primary};
+  border-radius: ${e.borders.radius.base};
+  color: ${e.colors.text.inverse};
+  cursor: pointer;
+  font-family: ${e.typography.fontFamily};
+  font-size: ${e.typography.size.sm};
+  font-weight: ${e.typography.fontWeight.medium};
+  transition: all ${e.transitions.base};
+
+  &:hover {
+    background: ${e.colors.primary};
+    color: ${e.colors.secondary};
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+`;x.input`
+  display: none;
+`;x.input`
+  padding: ${e.spacing.sm} ${e.spacing.md};
+  background: ${e.colors.secondary};
+  border: 1px solid ${e.colors.primary};
+  border-radius: ${e.borders.radius.base};
+  color: ${e.colors.text.light};
+  font-family: ${e.typography.fontFamily};
+  font-size: ${e.typography.size.sm};
+  min-width: 12rem;
+
+  &::placeholder {
+    color: ${e.colors.text.secondary};
+  }
+`;const va=x.div`
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+`,Sa=x.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${e.spacing.md};
+  max-width: 420px;
+  padding: ${e.spacing.lg};
+  background: ${e.colors.secondary};
+  border: 1px solid ${e.colors.primary};
+  border-radius: ${e.borders.radius.base};
+  color: ${e.colors.text.inverse};
+  font-size: ${e.typography.size.sm};
+`,Ia=x.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: ${e.spacing.sm};
+`;function Ca(o){return new Promise((t,n)=>{const s=new FileReader;s.onload=()=>{typeof s.result=="string"?t(s.result):n(new Error("Failed to encode Caesar mask image"))},s.onerror=()=>n(s.error??new Error("Failed to read Caesar mask image")),s.readAsDataURL(o)})}async function ja(o){if(o.length===0)return[];const t=new Worker(new URL("/assets/caesarMask.worker-DlHI8dgk.js",import.meta.url),{type:"module"});try{const n=await new Promise((s,r)=>{t.onmessage=({data:i})=>{if("error"in i){r(new Error(i.error));return}s(i.results)},t.onerror=i=>r(new Error(i.message||"Caesar mask worker failed")),t.postMessage({marks:o})});return await Promise.all(n.map(async({pixels:s,pixelWidth:r,pixelHeight:i,bounds:c,canvasWidth:h,canvasHeight:l,png:p})=>({snapshot:{imageData:new ImageData(s,r,i),bounds:c,canvasWidth:h,canvasHeight:l},maskUrl:await Ca(p)})))}finally{t.terminate()}}function Aa(o){const t=new Set,n=s=>{if(Array.isArray(s)){s.forEach(n);return}if(typeof s!="object"||s===null)return;const r=s,i=r.bbox_keys,c=r.bbox_num_masks;if(Array.isArray(i)&&Array.isArray(c)){i.forEach((h,l)=>{const p=Number(c[l]);typeof h=="string"&&h!=="-1"&&Number.isFinite(p)&&p>0&&t.add(h)});return}if("data"in r){n(r.data);return}for(const[h,l]of Object.entries(r)){const p=typeof l=="number"?l:Number(l);h!=="-1"&&Number.isFinite(p)&&p>0&&t.add(h)}};return o.forEach(s=>n(s.data)),[...t]}const Ma={maxRetries:3,retryDelayMs:1e3};function Ra(o){return o.reduce((t,n)=>((Array.isArray(n.data)?n.data:[n.data]).forEach(r=>{const i=r,c=typeof i=="object"&&i!==null&&"data"in i?i.data:i,h=typeof c=="object"&&c!==null?c:{},l=Array.isArray(h.bbox_keys)?h.bbox_keys:[],p=Array.isArray(h.bbox_num_masks)?h.bbox_num_masks:[];l.forEach((u,y)=>{if(typeof u!="string")return;const g=p[y],b=typeof g=="number"?g:Number(g);t[u]=Number.isFinite(b)?b:0})}),t),{})}function Ea(o,t,n,s=Ma){const r=d.useRef(o),i=d.useRef(n),c=P(p=>p.pushPerAnnotationMaskHistoryBatch);d.useEffect(()=>{r.current=o},[o]),d.useEffect(()=>{i.current=n},[n]);const h=d.useCallback(async(p,u,y)=>{const g=[],b=p.flatMap(m=>(Array.isArray(m.data)?m.data:[m.data]).flatMap(f=>(Array.isArray(f==null?void 0:f.data)?f.data??[]:[]).map($=>{var Z,te;const C=$.taskIndex??0,A=$.toolIndex??0;if(A<1)return{toolType:"hidden"};const R=(u==null?void 0:u.tasks)&&Object.keys(u.tasks).length>0?{...go.defaultToolSpec,...(te=(Z=u.tasks[`T${C}`])==null?void 0:Z.tools)==null?void 0:te[A]}:go.defaultToolSpec,T=$.markId?String($.markId):crypto.randomUUID(),z=$.x_center,E=$.y_center,I=$.mask_width,_=$.mask_height,D=typeof z=="number"&&typeof E=="number"&&typeof I=="number"&&typeof _=="number",X=$.mask??"";return X.length?g.push({annotationId:T,toolIndex:A,mark:$}):v.panoptes(`[Caesar] No mask supplied for annotation ${T}`),(R==null?void 0:R.type)==="rectangle"&&D?{toolType:"rectangle",x_center:z,y_center:E,width:I,height:_,markId:T,toolIndex:A,previousAnnotationCount:y[T]??0,markColour:R.color,markLabel:R.label,mask:X}:{toolType:"custom",data:void 0}}).filter($=>$.toolType!="hidden")));if(g.length>0){const S=(await ja(g.map(({mark:f})=>f))).map(({snapshot:f,maskUrl:w},$)=>({annotationId:g[$].annotationId,entry:{type:"sam",modelId:"sam2",...f},maskUrl:w,toolIndex:g[$].toolIndex}));c(S)}return b},[c]);return d.useCallback(async p=>{if(!r.current||!i.current){const y="Cannot process Caesar reductions: missing caesarClient or accessToken";console.debug(y),re.getState().setError(y);return}re.getState().setLoading(!0),re.getState().setWorkflowBoxTypes([]),re.getState().setPreviouslyInspectedBoxIds([]);const u=async(y=0)=>{var g;try{v.panoptes(`[Caesar] Fetching volunteer bounding box annotation reductions for subject ${p} (attempt ${y+1}/${s.maxRetries})`);const b=await kn(r.current,"bbox_per_rect_counter",p,t),m=(g=Xe.getState().user)==null?void 0:g.id,S=m?await ea(r.current,String(m),t,"user_bbox_anno_reducer"):[];v.panoptes("[Caesar] User bounding box reductions:",S);const f=Aa(S);re.getState().setPreviouslyInspectedBoxIds(f);const w=Ra(b);v.panoptes("[Caesar] Volunteer bounding box counts:",w),v.panoptes(`[Caesar] Fetching ML reductions/predictions for subject ${p} (attempt ${y+1}/${s.maxRetries})`);const $=await kn(r.current,"machineLearnt",p,t),C=await cr(t,i.current,go.staging),A=Object.values((C==null?void 0:C.tasks)??{}).flatMap(R=>(R.tools??[]).flatMap((T,z)=>z>=1&&T.type==="rectangle"&&typeof T.color=="string"?[{label:T.label||"Workflow box",color:T.color}]:[]));re.getState().setWorkflowBoxTypes(A);const j=await h($,C,w);re.getState().setAnnotations(j),re.getState().setLoading(!1),v.panoptes(`[Caesar] Successfully fetched ${j.length} annotations for subject ${p}`)}catch(b){if(y<s.maxRetries-1){const m=s.retryDelayMs*Math.pow(2,y);return v.app(`[Caesar] Fetch failed (attempt ${y+1}), retrying in ${m}ms...`,b),await new Promise(S=>setTimeout(S,m)),u(y+1)}else{const m=`Caesar annotation fetch failed after ${s.maxRetries} attempts`;v.app(`[Caesar] ${m}:`,b),re.getState().setError(m),re.getState().setLoading(!1)}}};return u()},[t,h,s])}async function _a(o,t=3e4){if(o instanceof File)return new Promise((n,s)=>{const r=new FileReader,i=setTimeout(()=>{r.abort(),s(new Error(`File reading timeout after ${t}ms`))},t);r.onload=()=>{clearTimeout(i),n(r.result)},r.onerror=()=>{var c;clearTimeout(i),s(new Error(`Failed to read file: ${((c=r.error)==null?void 0:c.message)??"unknown error"}`))},r.readAsDataURL(o)});try{const n=new AbortController,s=setTimeout(()=>n.abort(),t),r=await fetch(o,{signal:n.signal});if(clearTimeout(s),!r.ok)throw new Error(`Failed to fetch image from URL: HTTP ${r.status}`);const i=await r.blob();return URL.createObjectURL(i)}catch(n){throw n instanceof Error?n.name==="AbortError"?new Error(`Image fetch timeout after ${t}ms`):n:new Error(`Failed to load image from URL: ${String(n)}`)}}async function Ta(o,t=1e4){return new Promise((n,s)=>{const r=new Image,i=setTimeout(()=>{s(new Error(`Image normalization timeout after ${t}ms`))},t);r.onload=()=>{clearTimeout(i);try{const c=document.createElement("canvas");c.width=r.naturalWidth,c.height=r.naturalHeight;const h=c.getContext("2d");if(!h)throw new Error("Could not get canvas context for image normalization");h.drawImage(r,0,0),n(c.toDataURL("image/png"))}catch(c){s(c instanceof Error?c:new Error(String(c)))}},r.onerror=()=>{clearTimeout(i),s(new Error("Failed to load image for normalization"))},r.src=o})}function Pa(o,t=1e4){return new Promise((n,s)=>{const r=new Image,i=setTimeout(()=>{s(new Error(`Image dimension loading timeout after ${t}ms`))},t);r.onload=()=>{clearTimeout(i),n({width:r.naturalWidth,height:r.naturalHeight})},r.onerror=()=>{clearTimeout(i),s(new Error(`Failed to load image from URL: ${o}`))},r.src=o})}function Da(o,t,n){const[s,r]=d.useState(0),[i,c]=d.useState(!1),h=d.useRef(!1),l=P(w=>w.setSubject),p=P(w=>w.reset),u=d.useRef(null),y=d.useRef(null),g=d.useRef(0),b=d.useRef(!1),m=d.useRef(t);d.useEffect(()=>{m.current=t},[t]);const S=d.useCallback(async w=>{var $;try{const C=await _a(w.locations[0]["image/png"]),A=await Ta(C),j=await Pa(A);l(w.id,A,j),await(($=m.current)==null?void 0:$.call(m,w.id))}catch(C){v.app("Failed to load and process subject:",C)}},[l]),f=d.useCallback(async w=>{if(!o||h.current)return;const $=w==null?void 0:w.trim();h.current=!0,c(!0),n==null||n(!0);try{if(p(),$)try{const T=await ir($,o,Ht.staging);if(!T){v.app(`Subject ${$} was not found`);return}await S(T);return}catch(T){v.app(`Failed to fetch subject ${$}:`,T);return}if(!b.current)try{const T=await ar(lt,o,Ht.staging);y.current=T,g.current=0,b.current=!0}catch(T){v.app("Failed to fetch all workflow subjects, falling back to queue:",T)}const C=y.current;if(C&&C.length>0){const T=C[g.current%C.length];g.current=(g.current+1)%C.length,r(C.length-1),await S(T);return}if(!u.current||u.current.length===0)try{u.current=await rr(lt,o,Ht)}catch(T){v.app("Failed to fetch queued subjects:",T);return}const A=u.current;if(!A||A.length===0){v.app("No subjects available in queue");return}const[j,...R]=A;u.current=R,r(R.length),await S(j)}finally{h.current=!1,c(!1),n==null||n(!1)}},[o,n,S,p]);return{queueSize:s,isLoading:i,loadNextSubject:f}}function Ua({onLoadingChange:o}){const{token:t}=Gt(),[n,s]=d.useState(""),[r,i]=d.useState(null),c=t==null?void 0:t.access_token,h=!1,l=ta(c),p=Ea(l,lt,c),u=async S=>{const{setRestoringWork:f}=P.getState();f(!0);try{const w=c?ka(S,lt,c):Promise.resolve(null);await p(S),await wa(S,await w)}finally{P.getState().subjectId===S&&f(!1)}},{loadNextSubject:y,isLoading:g}=Da(c,u,o),b=S=>{P.getState().hasUnsubmittedWork()?i({subjectId:S}):y(S)},m=()=>{const S=r==null?void 0:r.subjectId;i(null),y(S)};return c?a.jsxs(Mn,{children:[a.jsxs($a,{children:[a.jsx(fo,{onClick:()=>b(),disabled:g,children:g?"Loading...":"Next subject"}),h,h]}),r&&a.jsx(va,{children:a.jsxs(Sa,{role:"alertdialog","aria-modal":"true","aria-label":"Unsubmitted work",children:[a.jsx("span",{children:"⚠️ You have work on this subject that hasn't been submitted. If you move on now it will be discarded. Submit your classification first if you want to keep it."}),a.jsxs(Ia,{children:[a.jsx(fo,{type:"button",autoFocus:!0,onClick:()=>i(null),children:"Stay on this subject"}),a.jsx(fo,{type:"button",onClick:m,children:"Discard & continue"})]})]})})]}):a.jsx(Mn,{})}function za(){const{activeAnnotationId:o,perAnnotationMasks:t,pushPerAnnotationMaskHistory:n,setPerAnnotationMask:s,undoPerAnnotationMask:r,redoPerAnnotationMask:i}=P(g=>({activeAnnotationId:g.activeAnnotationId,perAnnotationMasks:g.perAnnotationMasks,pushPerAnnotationMaskHistory:g.pushPerAnnotationMaskHistory,setPerAnnotationMask:g.setPerAnnotationMask,undoPerAnnotationMask:g.undoPerAnnotationMask,redoPerAnnotationMask:g.redoPerAnnotationMask})),c=()=>o||"-1";return{handlePushMaskHistory:(g,b)=>{const m=c(),S={type:"modifier_brush",mode:b,...g};n(m,S)},handleUndoMask:()=>{const g=c(),b=r(g);return b?{imageData:Yt(b),bounds:b.bounds}:null},handleRedoMask:()=>{const g=c(),b=i(g);return b?{imageData:Yt(b),bounds:b.bounds}:null},handleUpdateMaskDisplay:(g,b=null)=>{const m=c();s(m,g,b)},getActiveMaskState:()=>{const g=c();return t[g]||{maskUrl:null,history:[],historyIndex:0}},activeAnnotationId:o,perAnnotationMasks:t}}const Oa=d.forwardRef(({enableBrush:o=Tt.ENABLE_BRUSH,brushRadius:t=Tt.BRUSH_RADIUS,brushMode:n=Tt.BRUSH_MODE,addColor:s=Tt.ADD_COLOR,image:r,externalMask:i,externalMaskBounds:c,contentScale:h,...l},p)=>{const u=d.useRef(null),y=d.useRef(!1),g=d.useRef(o);g.current=o;const b=d.useRef(null),m=d.useRef(null),S=d.useRef(null),[f]=d.useState(()=>document.createElement("canvas")),[w]=d.useState(()=>document.createElement("canvas")),$=E=>{var _,D;(w.width!==f.width||w.height!==f.height)&&(w.width=f.width,w.height=f.height);const I=w.getContext("2d");if(I.imageSmoothingEnabled=!1,E&&E.width>0&&E.height>0)I.clearRect(E.x,E.y,E.width,E.height),I.drawImage(f,E.x,E.y,E.width,E.height,E.x,E.y,E.width,E.height);else if(!E)I.clearRect(0,0,w.width,w.height),I.drawImage(f,0,0);else return;(D=(_=u.current)==null?void 0:_.getLayer())==null||D.batchDraw()},{handlePushMaskHistory:C,handleUndoMask:A,handleRedoMask:j,handleUpdateMaskDisplay:R}=za(),T=()=>{if(n!=="add")return;const E=P.getState(),I=E.activeAnnotationId||"-1",_=E.perAnnotationMasks[I];if(_&&_.history.length>0)return;f.getContext("2d",{willReadFrequently:!0}).clearRect(0,0,f.width,f.height),S.current=null};d.useEffect(()=>{if(!i){const le=f.getContext("2d",{willReadFrequently:!0});le.imageSmoothingEnabled=!1,le.clearRect(0,0,f.width,f.height),S.current=null,$();return}const E=f.getContext("2d",{willReadFrequently:!0});E.imageSmoothingEnabled=!1;const{data:I,width:_,height:D}=ia(i),X=(r==null?void 0:r.naturalWidth)||l.width||f.width,Z=(r==null?void 0:r.naturalHeight)||l.height||f.height;f.width!==X&&(f.width=X),f.height!==Z&&(f.height=Z),E.clearRect(0,0,X,Z);const te=aa(s),O=new ImageData(_,D);ca(O,I,te),Sn(O,Ue.SELECTED_ALPHA),E.putImageData(O,(c==null?void 0:c.x)??0,(c==null?void 0:c.y)??0),S.current=c??_o(I),$()},[i,c,r]),d.useEffect(()=>{if(!r)return;const E=r.width||r.naturalWidth,I=r.height||r.naturalHeight;if(!E||!I)return;f.width=E,f.height=I,f.getContext("2d",{willReadFrequently:!0}).clearRect(0,0,E,I),S.current=null,$()},[r]);const z=E=>{const I=f.getContext("2d",{willReadFrequently:!0}),_=u.current;if(!_)return;const D=_.getRelativePointerPosition();if(!D)return;n==="add"?(I.globalCompositeOperation=Ue.ADD_COMPOSITE,I.strokeStyle=s):(I.globalCompositeOperation=Ue.ERASE_COMPOSITE,I.strokeStyle=Ue.ERASE_STROKE_COLOR);const X=h??1;I.lineWidth=Ue.LINE_WIDTH_MULTIPLIER*t/X,I.lineCap=Ue.LINE_CAP,I.lineJoin=Ue.LINE_JOIN;const Z=b.current??D,te=I.lineWidth/2+1,O=Yn({x:Math.floor(Math.min(Z.x,D.x)-te),y:Math.floor(Math.min(Z.y,D.y)-te),width:Math.ceil(Math.abs(D.x-Z.x)+te*2),height:Math.ceil(Math.abs(D.y-Z.y)+te*2)},f.width,f.height);if(I.beginPath(),I.moveTo(Z.x,Z.y),I.lineTo(D.x,D.y),I.stroke(),b.current=D,y.current&&O.width>0&&O.height>0){m.current=jo(m.current,O);const le=I.getImageData(O.x,O.y,O.width,O.height);if(n==="subtract"){const ae=le.data,$e=Math.floor(Ue.SELECTED_ALPHA*255);for(let xe=3;xe<ae.length;xe+=4)ae[xe]>0&&ae[xe]<.5*$e&&(ae[xe]=0);I.putImageData(le,O.x,O.y)}else Sn(le,Ue.SELECTED_ALPHA),I.putImageData(le,O.x,O.y)}$(O.width>0&&O.height>0?O:void 0)};return d.useImperativeHandle(p,()=>({pointerDown:E=>{g.current&&E.evt.buttons===1&&!y.current&&(T(),y.current=!0,m.current=null,z())},pointerMove:E=>{!g.current||!y.current||z()},pointerUp:()=>{if(y.current){const E=f.getContext("2d",{willReadFrequently:!0}),I=jo(S.current,m.current),_=da(E,f.width,f.height,I);C(_,n),S.current=_.bounds;const D=tt(_.imageData);R(D,_.bounds)}y.current=!1,b.current=null,m.current=null},undo:()=>{const E=f.getContext("2d",{willReadFrequently:!0}),I=A();I&&(E.putImageData(I.imageData,0,0),S.current=I.bounds,$())},redo:()=>{const E=f.getContext("2d",{willReadFrequently:!0}),I=j();I&&(E.putImageData(I.imageData,0,0),S.current=I.bounds,$())}})),a.jsx(Bt,{ref:u,image:w,...l})}),La=2,Ba=5,Ha=2,Fa="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'%3E%3Cpolygon points='0,0 7,2 2,7' fill='black'/%3E%3Ccircle cx='10' cy='10' r='8' fill='none' stroke='black' stroke-width='2'/%3E%3Cline x1='16' y1='16' x2='24' y2='24' stroke='black' stroke-width='2'/%3E%3Cline x1='10' y1='6' x2='10' y2='14' stroke='black' stroke-width='1.5' stroke-linecap='round'/%3E%3Cline x1='6' y1='10' x2='14' y2='10' stroke='black' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E",Na="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32'%3E%3Cpolygon points='0,0 7,2 2,7' fill='black'/%3E%3Ccircle cx='10' cy='10' r='8' fill='none' stroke='black' stroke-width='2'/%3E%3Cline x1='16' y1='16' x2='24' y2='24' stroke='black' stroke-width='2'/%3E%3Cline x1='6' y1='10' x2='14' y2='10' stroke='black' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E";function Ao(o){return`url("${o?Na:Fa}") 0 0, auto`}const Xn="default",Wa=2;function Ya(o,t,n=!1){if(n)return{color:ne.previouslyInspected,label:"Previously inspected box"};if(t)return{color:ne.saved,label:"Saved mask"};const s=o.previousAnnotationCount??0;return s>0?s>=Wa?{color:ne.repeatedlyAnnotated,label:"Previously annotated repeatedly"}:{color:ne.previouslyAnnotated,label:"Previously annotated once"}:{color:typeof o.markColour=="string"?o.markColour:ne.detected,label:typeof o.markLabel=="string"&&o.markLabel?o.markLabel:"Detected box"}}function Ka(o,t,n,s){const r=n/2,i=s/2;return{x:o-r,y:t-i,width:n,height:s}}function Rn(o,t){return{x:o+32+-5,y:t+32+-5}}function Zn(o,t,n,s=!1){const r=d.useCallback(h=>{if(!n)return;const l=h.target.getStage(),p=l==null?void 0:l.container();if(l&&p){const u=l.getPointerPosition();if(u){const{x:y,y:g}=Rn(u.x,u.y);o({visible:!0,x:y,y:g,text:s?"Deselect this box":n})}p.style.cursor=Ao(s)}},[n,s,o]),i=d.useCallback(h=>{if(!n)return;const l=h.target.getStage(),p=l==null?void 0:l.container();if(l&&p){const u=l.getPointerPosition();if(u){const{x:y,y:g}=Rn(u.x,u.y),b=s?"Deselect this box":n;o(m=>({...m,x:y,y:g,text:b}))}p.style.cursor=Ao(s)}},[n,s,o]),c=d.useCallback(h=>{var p;o(u=>({...u,visible:!1}));const l=(p=h.target.getStage())==null?void 0:p.container();l&&(l.style.cursor=t??Xn)},[t,o]);return{handleMouseEnter:r,handleMouseMove:i,handleMouseLeave:c}}const qa=d.memo(function({annotation:t,strokeWidth:n,onAnnotationClick:s,selectedId:r,hoveredRectId:i,toolCursor:c,setToolTip:h,onMouseEnterRect:l,onMouseLeaveRect:p,isUserRectHovered:u}){const y=Ka(t.x_center,t.y_center,t.width,t.height),g=P(I=>{var _;return((_=I.perAnnotationMasks[t.markId])==null?void 0:_.status)==="committed"}),b=P(I=>To(I.perAnnotationMasks[t.markId])),m=re(I=>I.previouslyInspectedBoxIds.includes(t.markId)),S=d.useRef(null),f=d.useRef(null),w=t.previousAnnotationCount,$=typeof w=="number"&&w>0,C=[...g&&!m?["Ready to submit"]:[],...m?["Already seen"]:[],...$?[`${w} previous annotation${w===1?"":"s"}`]:[]],A=C.length>0?`${t.markLabel??"Box"} (${C.join(", ")})`:t.markLabel,j=r===t.markId,R=i===t.markId,T=Ya(t,g,m);let z;u||r===void 0&&i!==void 0&&!R?z=.5:r===void 0||j||R?z=1:z=.5,d.useEffect(()=>{if(S.current){const I=f.current,_=S.current;if(I===null)_.opacity(z);else if(z!==I){const X=z>I?.2:.1;_.to({opacity:z,duration:X})}}f.current=z},[z,u]);const E=Zn(h,c,A,j);return a.jsx(Fn,{ref:S,x:y.x,y:y.y,width:y.width,height:y.height,stroke:T.color,strokeWidth:j?n*Ha:n,strokeScaleEnabled:!1,dash:b?Ie.inProgress:$?Ie.previouslyAnnotated:void 0,dashEnabled:b||$,listening:!0,hitStrokeWidth:n*Ba,fillEnabled:!1,onMouseEnter:I=>{E.handleMouseEnter(I),l==null||l(t.markId)},onMouseMove:E.handleMouseMove,onMouseLeave:I=>{E.handleMouseLeave(I),p==null||p()},onClick:I=>{I.cancelBubble=!0,s==null||s(y,t.markId)}},t.markId)}),Xa=d.memo(function({annotations:t,strokeWidth:n=La,onAnnotationClick:s,selectedId:r,showTool2Boxes:i=!1,toolCursor:c,setToolTip:h,onMouseEnterRect:l,onMouseLeaveRect:p,isUserRectHovered:u=!1}){const[y,g]=d.useState();return a.jsx(a.Fragment,{children:t.filter(b=>b.toolType==="rectangle"&&(i||b.toolIndex!==2)).map(b=>a.jsx(qa,{annotation:b,strokeWidth:n,onAnnotationClick:s,selectedId:r,hoveredRectId:y,toolCursor:c,setToolTip:h,isUserRectHovered:u,onMouseEnterRect:m=>{g(m),l==null||l()},onMouseLeaveRect:()=>{g(void 0),p==null||p()}},b.markId))})});function Za({rectId:o,rect:t,isSelected:n,opacity:s,baseStrokeWidth:r,onMouseEnter:i,onMouseLeave:c,onMouseMove:h,onClick:l,onTap:p,toolCursor:u,markLabel:y,hasUnsavedChanges:g,setToolTip:b}){const m=d.useRef(null),S=d.useRef(t),f=d.useRef(null),[w,$]=d.useState(t);d.useEffect(()=>{const j=S.current,R=t;j.x!==R.x||j.y!==R.y||j.width!==R.width||j.height!==R.height?(m.current&&m.current.to({x:R.x,y:R.y,width:R.width,height:R.height,duration:.2,onFinish:()=>{$(R)}}),S.current=R):$(R)},[t]),d.useEffect(()=>{if(m.current){const j=f.current,R=m.current;if(j===null)R.opacity(s);else if(s!==j){const z=s>j?.2:.1;R.to({opacity:s,duration:z})}}f.current=s},[s]);const C=n?r*2:r,A=Zn(b,u,y,n);return a.jsx(Fn,{ref:m,x:w.x,y:w.y,width:w.width,height:w.height,stroke:t.markColour,strokeWidth:C,strokeScaleEnabled:!1,dash:g?Ie.inProgress:void 0,fillEnabled:!1,listening:!0,hitStrokeWidth:r*4,onMouseEnter:j=>{i(),A.handleMouseEnter(j)},onMouseLeave:j=>{c(),A.handleMouseLeave(j)},onMouseMove:j=>{h(j),A.handleMouseMove(j)},onClick:j=>{j.cancelBubble=!0,l(j)},onTap:j=>{j.cancelBubble=!0,p(j)}},o)}const Ga=d.memo(function({onRectClick:t,selectedRectId:n,toolCursor:s=Xn,onMouseEnter:r,onMouseLeave:i,isHoveringOverCaesarRect:c=!1,setToolTip:h}){const l=P(b=>b.userRects),p=P(b=>b.perAnnotationMasks),[u,y]=d.useState();if(Object.keys(l).length===0)return null;const g=u!==void 0;return a.jsx(a.Fragment,{children:Object.entries(l).map(([b,m])=>{const S=n===b,f=u===b,w=2;let $=1;(g&&!f||c||n!==void 0&&!S)&&($=.5);const C=p[b],A=To(C);return a.jsx(Za,{rectId:b,rect:m,isSelected:S,isHovered:f,opacity:$,baseStrokeWidth:w,toolCursor:s,markLabel:m.markLabel,hasUnsavedChanges:A,setToolTip:h,onMouseEnter:()=>{y(b),r==null||r()},onMouseLeave:()=>{y(void 0),i==null||i()},onMouseMove:j=>{var T;const R=(T=j.target.getStage())==null?void 0:T.container();R&&(R.style.cursor=Ao(S))},onClick:()=>{t==null||t(m,b)},onTap:()=>{t==null||t(m,b)}},b)})})});async function Gn(o){return o?new Promise(t=>{const n=new Image;n.onload=()=>{try{const s=document.createElement("canvas");s.width=n.width,s.height=n.height;const r=s.getContext("2d");if(!r){v.masks("[computeMaskBounds] Failed to get canvas context"),t(null);return}r.drawImage(n,0,0);const i=r.getImageData(0,0,n.width,n.height),c=Ja(i);c?v.masks(`[computeMaskBounds] Extracted bounds: x=${c.x}, y=${c.y}, width=${c.width}, height=${c.height} from ${n.width}x${n.height}`):v.masks("[computeMaskBounds] No non-transparent pixels found in mask"),t(c)}catch(s){v.masks(`[computeMaskBounds] Error extracting bounds: ${s}`),t(null)}},n.onerror=()=>{v.masks("[computeMaskBounds] Failed to load image from mask URL"),t(null)},n.src=o}):(v.masks("[computeMaskBounds] No mask URL provided"),null)}function Ja(o){const{data:t,width:n,height:s}=o;let r=n,i=-1,c=s,h=-1,l=!1;for(let p=0;p<t.length;p+=4)if(t[p+3]>0){const y=p/4,g=y%n,b=Math.floor(y/n);r=Math.min(r,g),i=Math.max(i,g),c=Math.min(c,b),h=Math.max(h,b),l=!0}return l?{x:r,y:c,width:i-r+1,height:h-c+1}:null}async function Va(o){return o?new Promise(t=>{const n=new Image;n.onload=()=>{try{const s=document.createElement("canvas");s.width=n.width,s.height=n.height;const r=s.getContext("2d");if(!r){t(!1);return}r.drawImage(n,0,0);const i=r.getImageData(0,0,n.width,n.height),{data:c}=i;for(let h=3;h<c.length;h+=4)if(c[h]>0){t(!0);return}t(!1)}catch(s){v.masks(`[hasMaskPixels] Error checking mask pixels: ${s}`),t(!1)}},n.onerror=()=>{t(!1)},n.src=o}):!1}async function Jn(o){const t=P.getState(),n=t.perAnnotationMasks[o];if(!o||o==="-1"||!n||n.history.length===0||n.historyIndex<0)return v.canvas("[commitRectMask] Nothing to commit for "+o),!1;const s=ha(n.history,n.historyIndex);if(!s)return v.canvas("[commitRectMask] Failed to create composite"),!1;const r=document.createElement("canvas");r.width=s.width,r.height=s.height,r.getContext("2d").putImageData(s,0,0);const i=await Gn(r.toDataURL());return i&&o.startsWith("-")&&t.updateUserRect(o,i),t.markPerAnnotationMaskSaved(o),t.clearAnnotations(o,"sam2_mask"),!0}function En(){const{perAnnotationMasks:o}=P.getState();return Object.keys(o).filter(t=>{var n;return t!=="-1"&&((n=o[t])==null?void 0:n.status)==="in_progress"})}const Vn=d.memo(({annotation:o,index:t,contentScale:n,debugImageUrl:s,showPoints:r})=>{if(o.type==="point"&&!s&&r){const i=12/n,c=o.label===0?"#e94560":"lime",h=2/n;return a.jsxs(hn.Fragment,{children:[a.jsx(yt,{points:[o.x-i,o.y,o.x+i,o.y],stroke:c,strokeWidth:h,listening:!1}),a.jsx(yt,{points:[o.x,o.y-i,o.x,o.y+i],stroke:c,strokeWidth:h,listening:!1})]},o.id??t)}return o.type==="polyline"&&o.points.length>1?a.jsx(yt,{points:o.points.flatMap(i=>[i.x,i.y]),stroke:"lime",strokeWidth:3,lineCap:"round",lineJoin:"round",listening:!1},o.id??t):o.type==="brush"?a.jsx(hn.Fragment,{children:o.strokes.map((i,c)=>a.jsx(yt,{points:i.points.flatMap(h=>[h.x,h.y]),stroke:"lime",strokeWidth:i.radius*2/n,lineCap:"round",lineJoin:"round",listening:!1},c))},o.id??t):null});Vn.displayName="AnnotationRenderer";const Qt=qt`
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+`,Qa=qt`
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+`,ei=qt`
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+`,ti=qt`
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+`,oi=x.div`
+  background: ${e.colors.secondary};
+  border-radius: ${e.borders.radius.lg};
+  padding: ${e.spacing.lg};
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 700px;
+  min-height: 70vh;
+  position: relative;
+  overflow: hidden;
+`,ni=x.div`
+  width: 100%;
+  height: auto;
+  min-height: calc(70vh - 60px);
+  max-height: calc(70vh - 60px);
+  position: relative;
+  overflow: hidden;
+  background: ${e.colors.background.surface};
+  border-radius: ${e.borders.radius.lg};
+  display: block;
+`,si=x.div`
+  display: flex;
+  align-items: center;
+  gap: calc(${e.spacing.xs});
+  margin-bottom: ${e.spacing.md};
+`,Ze=x.button`
+  padding: 6px 12px;
+  border: 1px solid ${o=>o.$active?e.colors.primary:e.colors.border};
+  border-radius: ${e.borders.radius.base};
+  background: ${o=>o.$active?e.colors.primary:e.colors.secondary};
+  color: ${o=>o.$active?e.colors.secondary:e.colors.text.inverse};
+  cursor: pointer;
+  font-family: ${e.typography.fontFamily};
+  font-size: ${e.typography.size.sm};
+  transition: all ${e.transitions.base};
+
+  &:hover:not(:disabled) {
+    background: ${e.colors.primary};
+    color: ${e.colors.secondary};
+    border-color: ${e.colors.primary};
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`,ri=x(Ze)`
+  padding: 8px 16px;
+  background: ${e.colors.primary};
+  color: ${e.colors.secondary};
+  border: none;
+  border-radius: ${e.borders.radius.base};
+  font-family: ${e.typography.fontFamily};
+  font-size: ${e.typography.size.sm};
+  font-weight: ${e.typography.fontWeight.medium};
+  cursor: pointer;
+  transition: all ${e.transitions.base};
+
+  &:hover {
+    background: ${e.colors.border};
+    opacity: 0.8;
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+`,ai=x(Ze)`
+  padding: 8px 16px;
+  background: ${e.colors.primary};
+  color: ${e.colors.secondary};
+  border: none;
+  border-radius: ${e.borders.radius.base};
+  font-family: ${e.typography.fontFamily};
+  font-size: ${e.typography.size.sm};
+  font-weight: ${e.typography.fontWeight.medium};
+  cursor: pointer;
+  transition: all ${e.transitions.base};
+
+  &:hover {
+    background: ${e.colors.border};
+    opacity: 0.8;
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+`,ii=x(Ze)`
+  padding: 8px 16px;
+  background: ${e.colors.primary};
+  color: ${e.colors.secondary};
+  border: none;
+  border-radius: ${e.borders.radius.base};
+  font-family: ${e.typography.fontFamily};
+  font-size: ${e.typography.size.sm};
+  font-weight: ${e.typography.fontWeight.medium};
+  cursor: pointer;
+  transition: all ${e.transitions.base};
+
+  &:hover {
+    background: ${e.colors.border};
+    opacity: 0.8;
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+`,ci=x.span`
+  font-size: ${e.typography.size.sm};
+  color: ${e.colors.text.secondary};
+  min-width: 58px;
+  text-align: center;
+`,li=x.div`
+  width: 100%;
+  height: calc(70vh - 60px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background: ${e.colors.background.surface};
+  border-radius: ${e.borders.radius.lg};
+  color: ${e.colors.text.secondary};
+  font-size: ${e.typography.size.base};
+`,di=x.img`
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  animation: ${ti} 220ms ease-out forwards;
+`,ui=x.div`
+  display: inline-flex;
+  align-items: center;
+  gap: ${e.spacing.sm};
+  position: relative;
+  z-index: 1;
+  padding: 8px 12px;
+  border-radius: ${e.borders.radius.base};
+  background: rgba(255, 255, 255, 0.82);
+`,_n=x.span`
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid ${e.colors.border};
+  border-top-color: ${e.colors.primary};
+  animation: ${ei} 0.9s linear infinite;
+`,hi=x.div`
+  background: ${e.colors.error};
+  color: ${e.colors.text.inverse};
+  padding: 6px 12px;
+  border-radius: ${e.borders.radius.base};
+  margin-bottom: ${e.spacing.md};
+  font-size: ${e.typography.size.sm};
+`;x.img`
+  max-width: 100%;
+  max-height: 600px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  border-radius: ${e.borders.radius.lg};
+  border: 3px solid ${e.colors.error};
+  display: block;
+`;const yo=x.div`
+  background: ${e.colors.error};
+  color: ${e.colors.text.inverse};
+  padding: 12px 16px;
+  border-radius: ${e.borders.radius.base};
+  font-size: ${e.typography.size.sm};
+  font-weight: ${e.typography.fontWeight.medium};
+  display: flex;
+  align-items: center;
+  gap: ${e.spacing.sm};
+  flex-wrap: wrap;
+  position: absolute;
+  bottom: ${e.spacing.lg};
+  right: ${e.spacing.lg};
+  max-width: 600px;
+  z-index: 20;
+  animation: ${o=>o.$isLeaving?Qa:Qt} 0.1s ease-in-out;
+`;x.div`
+  position: relative;
+  width: 100%;
+`;const pi=x.div`
+  position: relative;
+  display: flex;
+  margin-left: auto;
+  gap: calc(${e.spacing.sm} / 2);
+  z-index: 20;
+  transition: top 0.1s ease-out, right 0.1s ease-out;
+`,gi=x.div`
+  background: ${e.colors.secondary};
+  color: ${o=>o.$isEditingMinusOne?e.colors.error:e.colors.text.inverse};
+  border: 1px solid ${o=>o.$isEditingMinusOne?e.colors.error:e.colors.border};
+  padding: 12px 16px;
+  border-radius: ${e.borders.radius.base};
+  font-size: ${e.typography.size.sm};
+  font-weight: ${e.typography.fontWeight.medium};
+  display: flex;
+  align-items: center;
+  gap: ${e.spacing.sm};
+  position: absolute;
+  top: ${e.spacing.lg};
+  left: ${e.spacing.lg};
+  max-width: 400px;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  animation: ${Qt} 0.1s ease-in-out;
+`,mi=x.div`
+  background: ${o=>o.$expanded?"rgba(0, 0, 0, 0.9)":"rgba(0, 0, 0, 0.66)"};
+  color: ${e.colors.text.inverse};
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 10px 12px;
+  border-radius: ${e.borders.radius.base};
+  font-size: ${e.typography.size.sm};
+  line-height: 1.4;
+  position: absolute;
+  bottom: ${e.spacing.lg};
+  left: ${e.spacing.lg};
+  max-width: 60%;
+  z-index: 9;
+  pointer-events: auto;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+  max-height: 75%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  animation: ${Qt} 0.1s ease-in-out;
+
+  p {
+    margin: ${e.spacing.sm} 0;
+  }
+
+  ul {
+    margin: ${e.spacing.xs} 0 ${e.spacing.sm} 1.1rem;
+    padding: 0;
+  }
+
+  li {
+    margin: 0 0 ${e.spacing.xs} 0;
+  }
+`,fi=x.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${e.spacing.sm};
+`,yi=x.div`
+  animation: ${Qt} 0.12s ease-in-out;
+`,xi=x.button`
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.12);
+  color: ${e.colors.text.inverse};
+  border-radius: ${e.borders.radius.base};
+  min-width: 48px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: ${e.typography.size.xs};
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 ${e.spacing.xs};
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+`,Qn=x.button`
+  padding: 8px 16px;
+  background: ${e.colors.primary};
+  color: ${e.colors.secondary};
+  border: none;
+  border-radius: ${e.borders.radius.base};
+  font-family: ${e.typography.fontFamily};
+  font-size: ${e.typography.size.sm};
+  font-weight: ${e.typography.fontWeight.medium};
+  cursor: pointer;
+  transition: all ${e.transitions.base};
+
+  &:hover {
+    background: ${e.colors.border};
+    opacity: 0.8;
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+`,bi=x(Qn)`
+  background: transparent;
+  color: ${e.colors.text.inverse};
+  border: 1px solid ${e.colors.text.inverse};
+`,at=x.button`
+  padding: 6px 14px;
+  background: transparent;
+  color: ${e.colors.text.inverse};
+  border: 1px solid ${e.colors.text.inverse};
+  border-radius: ${e.borders.radius.base};
+  font-family: ${e.typography.fontFamily};
+  font-size: ${e.typography.size.sm};
+  font-weight: ${e.typography.fontWeight.medium};
+  cursor: pointer;
+  transition: all ${e.transitions.base};
+  flex-shrink: 0;
+  white-space: nowrap;
+
+  &:hover {
+    background: ${e.colors.text.inverse};
+    color: ${e.colors.error};
+  }
+
+  &:active {
+    opacity: 0.8;
+  }
+`;x.button`
+  padding: 8px 16px;
+  background: ${e.colors.primary};
+  color: ${e.colors.secondary};
+  border: none;
+  border-radius: ${e.borders.radius.base};
+  font-family: ${e.typography.fontFamily};
+  font-size: ${e.typography.size.sm};
+  font-weight: ${e.typography.fontWeight.medium};
+  cursor: pointer;
+  transition: all ${e.transitions.base};
+
+  &:hover {
+    background: ${e.colors.border};
+    opacity: 0.8;
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+`;const xo={display:"inline-flex",alignItems:"center",gap:4},bo=()=>a.jsxs("svg",{width:"14",height:"14",viewBox:"0 0 16 16",fill:"none",stroke:"currentColor",strokeWidth:"1.8",strokeLinecap:"round","aria-hidden":"true",children:[a.jsx("circle",{cx:"6.5",cy:"6.5",r:"4.5"}),a.jsx("line",{x1:"10",y1:"10",x2:"14.5",y2:"14.5"})]}),ki=()=>a.jsx("svg",{style:{margin:"-3px 0"},width:"18",height:"18",viewBox:"0 0 16 16",fill:"none",stroke:"currentColor",strokeWidth:"1.2",strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":"true",children:a.jsx("path",{d:"M5.5 8V3a1 1 0 0 1 2 0v4M7.5 7V2a1 1 0 0 1 2 0v5M9.5 7V3a1 1 0 0 1 2 0v5M11.5 6.5a1 1 0 0 1 2 0V10c0 3-2 5-5 5-2 0-3.2-.9-4.2-2.3L2 10.5a1 1 0 0 1 1.6-1.2L5.5 11V8"})}),es=d.memo(({zoom:o,isPanMode:t,isDebugMode:n,activeAnnotationId:s,disableUndo:r,disableRedo:i,hasWholeImageMask:c=!1,isUserRectSelected:h=!1,hasUnsavedUserRectMaskChanges:l=!1,onZoomIn:p,onZoomOut:u,onZoomFit:y,onZoom100:g,onTogglePan:b,onUndo:m,onRedo:S,onIdentifyNewObject:f,onSaveUserRect:w,onDiscardUserRect:$})=>n?null:a.jsxs(si,{children:[a.jsx(Ze,{type:"button",onClick:u,title:"Zoom out one step","aria-label":"Zoom out one step",children:"-"}),a.jsxs(ci,{children:[a.jsx("span",{style:{position:"relative",top:2,display:"inline-flex"},children:a.jsx(bo,{})})," ",Math.round(o*100),"%"]}),a.jsx(Ze,{type:"button",onClick:p,title:"Zoom in one step","aria-label":"Zoom in one step",children:"+"}),a.jsxs(Ze,{type:"button",onClick:y,title:"Fit the entire image in the viewer","aria-label":"Fit the entire image in the viewer",style:xo,children:[a.jsx(bo,{}),"Fit"]}),a.jsxs(Ze,{type:"button",onClick:g,title:"Show image at native pixel size (1 image pixel per screen pixel)","aria-label":"Show image at native pixel size",style:xo,children:[a.jsx(bo,{}),"100%"]}),a.jsxs(Ze,{type:"button",$active:t,onClick:b,title:t?"Exit pan mode and return to the annotation tool":"Enter pan mode, then drag the image to reposition it","aria-label":t?"Exit pan mode":"Enter pan mode",style:xo,children:[a.jsx(ki,{}),"Pan"]}),(s||!r||!i||f&&c)&&a.jsxs(pi,{children:[f&&c&&a.jsx(ii,{type:"button",onClick:f,title:"Create a new bounding box from the mask",children:"Identify new object"}),w&&h&&l&&a.jsx(Qn,{type:"button",onClick:w,title:"Mark this mask as finished and ready to submit (user-created boxes are also resized to the mask)",children:"Ready to submit"}),$&&(s==null?void 0:s.startsWith("-"))&&s!=="-1"&&a.jsx(bi,{type:"button",onClick:$,title:"Delete this box and its mask",children:"Discard"}),a.jsx(ri,{type:"button",onClick:m,disabled:r,title:"Undo last mask operation (Ctrl+Z / ⌘Z)",children:"Undo"}),a.jsx(ai,{type:"button",onClick:S,disabled:i,title:"Redo last undone mask operation (Ctrl+Shift+Z / ⌘Shift+Z)",children:"Redo"})]})]}));es.displayName="CanvasToolbar";const Tn={PRIMARY:"#32ff00",MODIFIER:"#00ffff"},ko={BORDER_WIDTH:1,Z_INDEX:9999,BOX_SHADOW:"none"},wi=({tool:o,size:t,visible:n,x:s,y:r})=>{if(!n)return null;const i=o==="modifier_brush"?Tn.MODIFIER:Tn.PRIMARY,c=t*2;return a.jsx("div",{style:{position:"fixed",left:`${s-t}px`,top:`${r-t}px`,width:`${c}px`,height:`${c}px`,border:`${ko.BORDER_WIDTH}px solid ${i}`,borderRadius:"50%",pointerEvents:"none",zIndex:ko.Z_INDEX,boxShadow:ko.BOX_SHADOW,transition:"none"}})},$i=x.aside`
+  position: absolute;
+  right: ${e.spacing.lg};
+  bottom: ${e.spacing.lg};
+  z-index: 9;
+  width: max-content;
+  max-width: min(320px, calc(100% - ${e.spacing.lg} - ${e.spacing.lg}));
+  max-height: 65%;
+  overflow: auto;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: ${e.borders.radius.base};
+  background: ${({$expanded:o})=>o?"rgba(0, 0, 0, 0.9)":"rgba(0, 0, 0, 0.66)"};
+  color: ${e.colors.text.inverse};
+  font-size: ${e.typography.size.sm};
+  line-height: 1.4;
+`,vi=x.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${e.spacing.sm};
+  font-weight: ${e.typography.fontWeight.medium};
+`,Si=x.button`
+  min-width: 48px;
+  height: 24px;
+  padding: 0 ${e.spacing.xs};
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: ${e.borders.radius.base};
+  background: rgba(255, 255, 255, 0.12);
+  color: ${e.colors.text.inverse};
+  font: inherit;
+  font-size: ${e.typography.size.xs};
+  line-height: 1;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+`,Ii=x.ul`
+  display: grid;
+  gap: ${e.spacing.xs};
+  margin: ${e.spacing.sm} 0 0;
+  padding: 0;
+  list-style: none;
+`,Ci=x.li`
+  display: flex;
+  align-items: center;
+  gap: ${e.spacing.sm};
+`,ji=x.svg`
+  display: inline-block;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 14px;
+`;function Ai({annotations:o,userRects:t,workflowBoxTypes:n,expanded:s,onToggleExpanded:r,onMouseEnter:i,onMouseLeave:c}){const h=d.useMemo(()=>{const l=new Map,p=u=>{const y=`${u.color}\0${u.label}`;l.has(y)||l.set(y,u)};for(const{color:u,label:y}of n)p({color:u,label:y}),p({color:u,label:`${y} with unsaved edits`,dash:Ie.inProgress});for(const u of Zr)p(u);for(const u of o){if(u.toolType!=="rectangle")continue;const y=typeof u.markColour=="string"?u.markColour:ne.detected;if(y===ne.detected||n.some(b=>b.color===y))continue;const g=typeof u.markLabel=="string"&&u.markLabel?`${u.markLabel}`:"Workflow box colour";p({color:y,label:g}),p({color:y,label:`${g} with unsaved edits`,dash:Ie.inProgress})}for(const u of Object.values(t))!u.markColour||u.markColour===ne.userCreated||(p({color:u.markColour,label:`User-created box: ${u.markLabel}`}),p({color:u.markColour,label:`User-created box: ${u.markLabel} with unsaved edits`,dash:Ie.inProgress}));return Array.from(l.values())},[o,t,n]);return a.jsxs($i,{$expanded:s,"aria-label":"Bounding box colour key",onMouseEnter:i,onMouseLeave:c,children:[a.jsxs(vi,{children:[a.jsx("span",{children:"Box colour key"}),a.jsx(Si,{type:"button",onClick:r,"aria-expanded":s,"aria-label":s?"Collapse box colour key":"Expand box colour key",title:s?"Collapse box colour key":"Expand box colour key",children:s?"Hide":"Show"})]}),s&&a.jsx(Ii,{children:h.map(({color:l,label:p,dash:u})=>a.jsxs(Ci,{children:[a.jsx(ji,{viewBox:"0 0 24 14","aria-hidden":"true",children:a.jsx("rect",{x:"1",y:"1",width:"22",height:"12",rx:"2",fill:"none",stroke:l,strokeWidth:"2",strokeDasharray:u==null?void 0:u.join(" ")})}),a.jsx("span",{children:p})]},`${l}\0${p}`))})]})}const Mi=x.div`
+  background: ${e.colors.background};
+  border: 2px solid ${e.colors.border};
+  border-radius: ${e.borders.radius.lg};
+  padding: ${e.spacing.md};
+  margin-top: ${e.spacing.md};
+`,Ri=x.h3`
+  margin: 0 0 ${e.spacing.md} 0;
+  font-size: ${e.typography.size.base};
+  font-weight: ${e.typography.fontWeight.bold};
+  color: ${e.colors.text.primary};
+`,Ei=x.div`
+  display: flex;
+  gap: ${e.spacing.md};
+  margin-bottom: ${e.spacing.md};
+  align-items: center;
+  flex-wrap: wrap;
+`,Pn=x.label`
+  font-size: ${e.typography.size.sm};
+  color: ${e.colors.text.secondary};
+  font-weight: ${e.typography.fontWeight.medium};
+`,_i=x.select`
+  padding: ${e.spacing.xs} ${e.spacing.sm};
+  border: 1px solid ${e.colors.border};
+  border-radius: ${e.borders.radius.base};
+  background: ${e.colors.secondary};
+  color: ${e.colors.text.light};
+  font-size: ${e.typography.size.sm};
+  cursor: pointer;
+
+  &:hover {
+    border-color: ${e.colors.primary};
+  }
+
+  &:focus {
+    outline: none;
+    border-color: ${e.colors.primary};
+    box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1);
+  }
+`,Ti=x.div`
+  display: flex;
+  align-items: center;
+  gap: ${e.spacing.sm};
+`,Pi=x.input`
+  width: 150px;
+`,Di=x.span`
+  font-size: ${e.typography.size.xs};
+  color: ${e.colors.text.secondary};
+  min-width: 40px;
+`,Ui=x.div`
+  position: relative;
+  display: block;
+  margin-bottom: ${e.spacing.md};
+  border: 1px solid ${e.colors.border};
+  border-radius: ${e.borders.radius.base};
+  background: ${e.colors.secondary};
+  overflow: auto;
+  width: 100%;
+  max-height: 700px;
+`,zi=x.canvas`
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: crisp-edges;
+`,Oi=x.svg`
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+`,Li=x.div`
+  background: ${e.colors.secondary};
+  border-radius: ${e.borders.radius.base};
+  padding: ${e.spacing.sm};
+  font-size: ${e.typography.size.xs};
+  color: ${e.colors.text.secondary};
+  line-height: 1.6;
+`,ft=x.div`
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: ${e.spacing.xs};
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+`,Ut=x.span`
+  display: inline-block;
+  background: ${o=>o.$color};
+  color: white;
+  padding: 2px 6px;
+  border-radius: ${e.borders.radius.base};
+  font-size: ${e.typography.size.xs};
+  font-weight: ${e.typography.fontWeight.bold};
+  margin: 0 ${e.spacing.xs};
+`,Bi=({debugImageUrl:o,debugMasks:t,maskSelectionInfo:n,debugCrop:s,debugPrompts:r})=>{var f;const i=d.useRef(null),c=d.useRef(null),h=d.useRef(null),[l,p]=d.useState(null),[u,y]=d.useState(.5),[g,b]=d.useState({width:0,height:0});if(d.useEffect(()=>{t&&t.length>0&&n&&p(n.selected_idx)},[t,n]),d.useEffect(()=>{if(!i.current||!o)return;const w=i.current,$=w.getContext("2d");if(!$)return;const C=new Image;C.onload=()=>{if(w.width=C.width,w.height=C.height,b({width:C.width,height:C.height}),$.drawImage(C,0,0),l!==null&&typeof l=="number"&&t){const j=t.find(R=>R.idx===l);if(j){const R=new Image;R.onload=()=>{$.globalAlpha=u,$.drawImage(R,0,0),$.globalAlpha=1},R.onerror=()=>{v.debug("[DebugMasksPanel] Failed to load mask image")},R.src=j.url}}},C.src=o},[o,l,u,t]),!o||!t||!n||!r)return null;const m=r.filter(w=>w.label===1).length,S=r.filter(w=>w.label===0).length;return a.jsxs(Mi,{children:[a.jsx(Ri,{children:"Debug: SAM Mask Analysis"}),a.jsxs(Ei,{children:[a.jsxs("div",{children:[a.jsx(Pn,{htmlFor:"mask-selector",children:"Overlay mask:"})," ",a.jsxs(_i,{id:"mask-selector",value:l!==null?l:"",onChange:w=>p(w.target.value===""?null:parseInt(w.target.value)),children:[a.jsx("option",{value:"",children:"None (image only)"}),t.map(w=>a.jsxs("option",{value:w.idx,children:["Mask ",w.idx," (IoU: ",w.iou.toFixed(3),")",w.is_selected?" [SAM Selected]":""]},w.idx))]})]}),l!==null&&a.jsxs(Ti,{children:[a.jsx(Pn,{htmlFor:"opacity-slider",children:"Opacity:"}),a.jsx(Pi,{id:"opacity-slider",type:"range",min:"0",max:"1",step:"0.1",value:u,onChange:w=>y(parseFloat(w.target.value))}),a.jsxs(Di,{children:[Math.round(u*100),"%"]})]})]}),a.jsxs(Ui,{ref:h,children:[a.jsx(zi,{ref:i}),a.jsx(Oi,{ref:c,viewBox:`0 0 ${g.width} ${g.height}`,style:{width:"100%",height:"auto",display:"block"},children:r&&s&&r.map((w,$)=>{const C=w.x-s.crop_x0,A=w.y-s.crop_y0,R=w.label===1?"#22c55e":"#ef4444",T=Math.max(3,Math.min(g.width,g.height)/40),z=T+5;return C<0||A<0||C>g.width||A>g.height?null:a.jsxs("g",{children:[a.jsx("circle",{cx:C,cy:A,r:T,fill:R,fillOpacity:.75}),a.jsx("circle",{cx:C,cy:A,r:T,fill:"none",stroke:"white",strokeWidth:"0.5"}),a.jsx("circle",{cx:C,cy:A,r:T-1,fill:"none",stroke:R,strokeWidth:"1"}),a.jsx("line",{x1:C-z,y1:A,x2:C+z,y2:A,stroke:"white",strokeWidth:"0.5"}),a.jsx("line",{x1:C,y1:A-z,x2:C,y2:A+z,stroke:"white",strokeWidth:"0.5"})]},$)})})]}),a.jsxs(Li,{children:[a.jsx(ft,{children:a.jsxs("span",{children:["Prompts:",a.jsxs(Ut,{$color:"#22c55e",children:[m," positive"]}),a.jsxs(Ut,{$color:"#ef4444",children:[S," negative"]})]})}),a.jsx(ft,{children:a.jsxs("span",{children:["Crop region: ",s==null?void 0:s.crop_w,"×",s==null?void 0:s.crop_h,"px"]})}),l!==null&&a.jsxs(ft,{children:[a.jsxs("span",{children:["Selected mask:",l===n.selected_idx&&a.jsxs(Ut,{$color:"#4285f4",children:["Alternative ",l," (SAM Selected)"]}),l!==n.selected_idx&&a.jsxs(Ut,{$color:"#42f4c2",children:["Alternative ",l]})]}),a.jsxs("span",{children:["IoU: ",(f=t.find(w=>w.idx===l))==null?void 0:f.iou.toFixed(3)]})]}),n.has_background_prompts&&a.jsx(ft,{children:a.jsx("span",{style:{color:"#ef9800",fontStyle:"italic"},children:"⚠ Background prompts detected. Check if mask respects them."})}),a.jsx(ft,{children:a.jsxs("span",{children:["All IoU scores: ",n.all_iou_scores.map(w=>w.toFixed(3)).join(", ")]})})]})]})};function Hi(o,t,n){const[s,r]=d.useState(null),[i,c]=d.useState(null),[h,l]=d.useState(null),[p,u]=d.useState({width:1200,height:800}),[y,g]=d.useState({zoom:1,pan:{x:0,y:0}}),b=d.useRef(null),m=d.useRef(null),S=d.useRef(!1),f=d.useRef(null),{zoom:w,pan:$}=y,C=d.useCallback((I,_)=>{u(D=>D.width===I&&D.height===_?D:{width:I,height:_})},[]),A=d.useCallback(I=>{if(f.current=I,!I)return;const{width:_,height:D}=I.getBoundingClientRect();_>0&&D>0&&C(_,D)},[C]);d.useLayoutEffect(()=>{if(!f.current)return;const{clientWidth:I,clientHeight:_}=f.current;I>0&&_>0&&C(I,_)},[C]),d.useEffect(()=>{if(!f.current)return;const I=new ResizeObserver(([_])=>{const{width:D,height:X}=_.contentRect;D>0&&X>0&&!S.current&&C(D,X)});return I.observe(f.current),()=>I.disconnect()},[C]),d.useEffect(()=>{s&&(p.width===0||p.height===0||g({zoom:1,pan:{x:0,y:0}}))},[s,p.width,p.height]);const j=d.useMemo(()=>!s||p.width===0||p.height===0?1:Math.min(p.width/s.naturalWidth,p.height/s.naturalHeight),[s,p.width,p.height]),R=d.useMemo(()=>j*w,[j,w]),{groupX:T,groupY:z}=d.useMemo(()=>{if(!s||p.width===0||p.height===0)return{groupX:0,groupY:0};const I=R,_=(p.width-s.naturalWidth*I)/2,D=(p.height-s.naturalHeight*I)/2;return{groupX:_+$.x,groupY:D+$.y}},[s,R,$,p.width,p.height]),E=d.useCallback((I,_)=>{const X=w,Z=$,te=performance.now();S.current=!0;function O(le){const ae=Math.min((le-te)/250,1),$e=ae<.5?2*ae*ae:-1+(4-2*ae)*ae;g({zoom:X+(I-X)*$e,pan:{x:Z.x+(_.x-Z.x)*$e,y:Z.y+(_.y-Z.y)*$e}}),ae<1?requestAnimationFrame(O):S.current=!1}requestAnimationFrame(O)},[w,$]);return d.useEffect(()=>{if(!o){r(null);return}const I=new window.Image;I.crossOrigin="anonymous",I.onload=()=>{r(I),P.setState({imageDimensions:{width:I.naturalWidth,height:I.naturalHeight}})},I.src=o},[o]),d.useEffect(()=>{if(!t){c(null);return}const I=new window.Image;I.onload=()=>c(I),I.src=t},[t]),d.useEffect(()=>{if(!n){l(null);return}const I=new window.Image;I.onload=()=>l(I),I.src=n},[n]),{viewportState:y,setViewportState:g,stageSize:p,image:s,maskImage:i,debugImage:h,stageRef:b,contentRef:m,canvasWrapperRef:f,isInteractingRef:S,setCanvasWrapper:A,updateStageSize:C,animateTo:E,zoom:w,pan:$,baseScale:j,contentScale:R,groupX:T,groupY:z}}function Fi(o){const{tool:t,brushProps:n,image:s,isPanMode:r,suppressNextClick:i,setSuppressNextClick:c,selectedCaesarAnnotation:h,activeAnnotationId:l,setNoRectangleWarning:p,drawingPoints:u,setDrawingPoints:y,zoom:g,baseScale:b,contentScale:m,groupX:S,groupY:f,stageSize:w,stageRef:$,isInteractingRef:C,addAnnotation:A,onPointClick:j,setViewportState:R,animateTo:T}=o,z=.25,E=30,I=1.25,_=d.useCallback(H=>({x:(H.x-S)/m,y:(H.y-f)/m}),[S,f,m]),D=d.useCallback(H=>{var Ce;if(r)return;if(i){c(!1);return}if(H.evt.button!==0)return;const F=H.target;if(F!=null&&F.getClassName&&["Circle","Line"].includes(F.getClassName())||!$.current||!s)return;const L=$.current.getPointerPosition();if(!L)return;const W=$.current.getIntersection(L),de=((Ce=W==null?void 0:W.getClassName)==null?void 0:Ce.call(W))==="Rect";t==="point"&&!l&&!h&&!de&&p(!0);const{x:J,y:Y}=_(L);if(t==="point"){const Re=l||(h?String(h):"-1");A({type:"point",x:J,y:Y,label:1,annotationId:Re});const Ge={x:J,y:Y,label:1};v.canvas("[handleStageClick] Adding positive point (left-click):",Ge),j==null||j(J,Y,1)}else(t==="freehand"||t==="brush")&&y([...u,{x:J,y:Y}])},[t,s,A,j,_,r,i,h,l,p,u,y,$]),X=d.useCallback(H=>{if(H.evt.preventDefault(),r||t!=="point"||!$.current||!s)return;c(!0);const F=$.current.getPointerPosition();if(!F)return;const{x:L,y:W}=_(F),de=l||(h?String(h):"-1");A({type:"point",x:L,y:W,label:0,annotationId:de});const J={x:L,y:W,label:0};v.canvas("[handleContextMenu] Adding negative point (right-click):",J),j==null||j(L,W,0)},[t,s,A,j,_,r,$,c,l,h]),Z=d.useCallback(H=>{if(r||t!=="freehand"&&t!=="brush"||!(H.evt.buttons===1)||!$.current||!s)return;const L=$.current.getPointerPosition();if(!L)return;const{x:W,y:de}=_(L);y([...u,{x:W,y:de}])},[t,s,_,r,u,y,$]),te=d.useCallback(()=>{if(r)return;const H=l||(h?String(h):"-1");t==="freehand"&&u.length>1?(A({type:"polyline",points:[...u],annotationId:H}),y([])):t==="brush"&&u.length>1?(A({type:"brush",strokes:[{points:[...u],radius:2*n.brushSize}],annotationId:H}),y([])):(t==="freehand"||t==="brush")&&u.length<=1&&y([])},[t,u,A,r,n.brushSize,y,h,l]),O=d.useCallback(H=>{if(!s)return;const F=Math.max(z,Math.min(E,H)),L=w.width/2,W=w.height/2,de=(L-S)/m,J=(W-f)/m,Y=b*F,Ce=(w.width-s.naturalWidth*Y)/2,Re=(w.height-s.naturalHeight*Y)/2;R({zoom:F,pan:{x:L-Ce-de*Y,y:W-Re-J*Y}})},[s,w,S,f,m,b,R]),le=d.useCallback(()=>O(g*I),[g,O]),ae=d.useCallback(()=>O(g/I),[g,O]),$e=d.useCallback(()=>{R({zoom:1,pan:{x:0,y:0}})},[R]),xe=d.useCallback(()=>{if(!s)return;const H=Math.min(w.width/s.naturalWidth,w.height/s.naturalHeight);O(1/H)},[s,w,O]),ve=d.useCallback(()=>{s&&T(1,{x:0,y:0})},[s,T]),Ye=d.useCallback(H=>{var Le;C.current=!0,H.evt.preventDefault();const F=1.08,L=(Le=$.current)==null?void 0:Le.getPointerPosition();if(!L||!s)return;const W=H.evt.deltaY<0?g*F:g/F,de=Math.max(z,Math.min(E,W)),J=b*de,Y=(L.x-S)/m,Ce=(L.y-f)/m,Re=(w.width-s.naturalWidth*J)/2,Ge=(w.height-s.naturalHeight*J)/2;R({zoom:de,pan:{x:L.x-Re-Y*J,y:L.y-Ge-Ce*J}}),requestAnimationFrame(()=>{C.current=!1})},[g,b,m,S,f,s,w,R,$,C]),Oe=d.useCallback(H=>{const F=H.target,L=(w.width-((s==null?void 0:s.naturalWidth)??0)*m)/2,W=(w.height-((s==null?void 0:s.naturalHeight)??0)*m)/2;R({zoom:g,pan:{x:F.x()-L,y:F.y()-W}})},[m,s,w,g,R]);return{pointerToImage:_,handleStageClick:D,handleContextMenu:X,handleStageMouseMove:Z,handleStageMouseUp:te,handleWheel:Ye,handleContentDragMove:Oe,zoomIn:le,zoomOut:ae,zoomFit:$e,zoom100:xe,zoomFitAnimated:ve}}function Ni(o){const{tool:t,toolCursor:n,isBrushCursorVisible:s,debugImageUrl:r,selectedCaesarAnnotation:i,onUndo:c,onRedo:h,stageRef:l,setIsPanMode:p,setNoRectangleWarning:u}=o,y=g=>{if(!(g instanceof HTMLElement))return!1;if(g.isContentEditable)return!0;const b=g.tagName.toLowerCase();if(b==="textarea"||b==="select")return!0;if(b==="input"){const m=g;return m.type!=="button"&&m.type!=="checkbox"&&m.type!=="radio"&&m.type!=="range"}return!1};d.useEffect(()=>{const g=l.current;g&&(g.container().style.cursor=s?"none":r?"default":n)},[n,s,r,l]),d.useEffect(()=>{p(!1)},[t,p]),d.useEffect(()=>{const g=b=>{if(y(b.target))return;const m=l.current;if(!m||!m.container().matches(":hover"))return;const f=b.key.toLowerCase();if(!(b.metaKey||b.ctrlKey))return;const $=f==="z"&&!b.shiftKey,C=f==="z"&&b.shiftKey&&b.metaKey||f==="y"&&b.ctrlKey&&!b.metaKey;if($){b.preventDefault(),c==null||c();return}C&&(b.preventDefault(),h==null||h())};return window.addEventListener("keydown",g),()=>window.removeEventListener("keydown",g)},[c,h,l]),d.useEffect(()=>{i&&u(!1)},[i,u])}function wo(o){const t=window.requestIdleCallback;typeof t=="function"?t(o):setTimeout(o,0)}const Wi=({tool:o,brushProps:t,onPointClick:n,showPoints:s=!0,showTool2Boxes:r,isSubjectLoading:i=!1})=>{var nn,sn,rn,an,cn,ln;const{token:c}=Gt(),h=P(k=>k.imageUrl),l=P(k=>k.debugImageUrl),p=P(k=>k.debugMasks),u=P(k=>k.maskSelectionInfo),y=P(k=>k.debugCrop),g=P(k=>k.debugPrompts),b=P(k=>k.annotations),m=P(k=>k.activeAnnotationId),S=P(k=>k.undoPerAnnotationMask),f=P(k=>k.setActiveAnnotation),w=P(k=>k.addAnnotation),$=P(k=>k.perAnnotationMasks),C=P(k=>k.compositeExcludingActiveMask),A=P(k=>k.userRects),j=P(k=>k.setDebugImage),R=P(k=>{if(!(!m||m==="-1"))return k.perAnnotationMasks[m]}),T=re(k=>k.annotations),z=re(k=>k.workflowBoxTypes),E=re(k=>k.selectedAnnotationId),I=re(k=>k.setSelectedAnnotationId),_=re(k=>k.isLoading),D=P(k=>k.isRestoringWork),X=i||_||D,Z=To(R),[te,O]=d.useState(!1),[le,ae]=d.useState(!1),[$e,xe]=d.useState(!0),[ve,Ye]=d.useState(!1),[Oe,H]=d.useState(!1),[F,L]=d.useState(null),W=d.useRef(new Set),de=d.useRef(new Set),J=d.useCallback(k=>{de.current.has(k)||W.current.has(k)||(W.current.add(k),L(k))},[]),[Y,Ce]=d.useState(!1),[Re,Ge]=d.useState(!1),[Le,eo]=d.useState([]),[Je,$t]=d.useState({visible:!1,text:"",x:0,y:0}),[vt,St]=d.useState({x:0,y:0}),[to,It]=d.useState(!1),[oo,oe]=d.useState(!1),[fe,me]=d.useState(!1),[V,ye]=d.useState(null),[q,ue]=d.useState(),[pe,B]=d.useState(!1),[Q,ie]=d.useState(!1),[be,je]=d.useState(!0),[Ae,ke]=d.useState(!1),[ut,ot]=d.useState(!1),[Ve,Ee]=d.useState(!1),no=Ae||ut||Ve,[Do,ns]=d.useState(null),[ss,Uo]=d.useState(1),[rs,so]=d.useState(null),[as,zo]=d.useState(0),ro=d.useRef(null),Oo=d.useRef(null),is=o==="point"||o==="modifier_brush",Lo=d.useRef(!1),Ke=d.useRef(null),Bo=d.useRef(null),Ct=d.useRef(null),jt=d.useMemo(()=>r?new Set:new Set(Object.entries($).filter(([,k])=>k.toolIndex===2).map(([k])=>k)),[$,r]);d.useLayoutEffect(()=>{var U;const k=Bo.current;if(!k)return;(U=Ct.current)==null||U.destroy();const M=new pn.Tween({node:k,opacity:X?0:1,duration:.12,easing:pn.Easings.EaseOut});return Ct.current=M,M.play(),()=>{M.destroy(),Ct.current===M&&(Ct.current=null)}},[X]);const Ho=d.useRef(t.nonSelectedMaskOpacity);Ho.current=t.nonSelectedMaskOpacity;const ao=rs===(m||"-1");d.useEffect(()=>{const k=Oo.current;!k||!ao||(k.opacity(0),k.to({opacity:Ho.current,duration:.25}))},[ao,V]);const ht=m||"-1";d.useEffect(()=>{te&&!Oe&&(xe(!0),ae(!1))},[te,Oe]),d.useEffect(()=>{const k=ro.current;if(!C){ye(null),so(k);return}let M=!1;const U=document.createElement("img");return U.onload=()=>{M||(ye(U),so(k))},U.onerror=()=>{M||(v.canvas("[useEffect] Failed to load composite excluding active mask image"),ye(null),so(k))},U.src=C,()=>{M=!0}},[C,as]),d.useEffect(()=>{h&&(Lo.current=!0,ns(h))},[h]);const At=m||"-1",Fo=!jt.has(At),cs=Fo&&$[At]?$[At].maskUrl:null,ls=((nn=$[At])==null?void 0:nn.maskBounds)??null,we=Hi(h,cs,l),{setViewportState:ds,stageRef:pt,contentRef:us,isInteractingRef:No,setCanvasWrapper:hs,animateTo:io,zoom:Wo,baseScale:co,contentScale:nt,groupX:Yo,groupY:Ko,image:N,maskImage:ps,debugImage:Mt}=we;d.useEffect(()=>{if(!N)return;Ke.current!==null&&cancelAnimationFrame(Ke.current);const k=220,M=performance.now();Uo(0);const U=G=>{const se=G-M,ee=Math.min(se/k,1);Uo(ee),ee<1?Ke.current=requestAnimationFrame(U):Ke.current=null};return Ke.current=requestAnimationFrame(U),()=>{Ke.current!==null&&(cancelAnimationFrame(Ke.current),Ke.current=null)}},[N]);const gs=Fi({tool:o,brushProps:t,image:N,isPanMode:Y,suppressNextClick:Re,setSuppressNextClick:Ge,selectedCaesarAnnotation:E,activeAnnotationId:m,setNoRectangleWarning:O,drawingPoints:Le,setDrawingPoints:eo,zoom:Wo,baseScale:co,contentScale:nt,groupX:Yo,groupY:Ko,stageSize:{width:we.stageSize.width,height:we.stageSize.height},stageRef:pt,isInteractingRef:No,addAnnotation:w,onPointClick:n,setViewportState:ds,animateTo:io}),{handleStageClick:ms,handleContextMenu:fs,handleStageMouseMove:ys,handleStageMouseUp:qo,handleWheel:xs,handleContentDragMove:bs,zoomIn:ks,zoomOut:ws,zoomFit:$s,zoom100:vs,zoomFitAnimated:st}=gs,lo=no?"default":(fe||pe)&&!Y?"auto":Y?"grab":"crosshair",Xo=!Y&&!l&&to&&!fe&&!pe&&!no,Ss=d.useRef(new Map),Zo=d.useRef(null),uo=d.useRef(0),Go=d.useCallback(()=>{const k=P.getState(),M=k.activeAnnotationId||"-1";let U=`active:${M}`;for(const[Te,et]of Object.entries(k.perAnnotationMasks))Te===M||jt.has(Te)||(U+=`|${Te}:${et.historyIndex}:${et.history.length}`);if(U===Zo.current){v.canvas("[displayCompositeExcludingActive] No other annotation changed - skipping recompute");return}Zo.current=U,v.canvas("[displayCompositeExcludingActive] Computing composite excluding "+M);const G=++uo.current,se=Ss.current,ee=Object.entries(k.perAnnotationMasks).filter(([Te])=>Te!==M&&!jt.has(Te));let ce=null,K=null,he=null,Me=null,ge=0,_e=0;const Qe=15,gt=()=>{if(G!==uo.current)return;if(No.current){wo(gt);return}const Te=Math.min(_e+Qe,ee.length);for(;_e<Te;_e++){const[Be,Pe]=ee[_e];if(Pe.history.length===0||Pe.historyIndex<0){se.delete(Be);continue}const Rt=se.get(Be);let Se;if(Rt&&Rt.historyLength===Pe.history.length&&Rt.historyIndex===Pe.historyIndex?Se=Rt.snapshot:(Se=Nt(Pe.history,Pe.historyIndex),Se?se.set(Be,{historyLength:Pe.history.length,historyIndex:Pe.historyIndex,snapshot:Se}):se.delete(Be)),!(Se!=null&&Se.bounds))continue;ce||(ce=document.createElement("canvas"),ce.width=Se.canvasWidth,ce.height=Se.canvasHeight,K=ce.getContext("2d",{willReadFrequently:!0}),K.globalCompositeOperation="lighter",he=document.createElement("canvas"),he.width=Se.imageData.width,he.height=Se.imageData.height,Me=he.getContext("2d"));const{imageData:He,bounds:dn}=Se;he.width<He.width&&(he.width=He.width),he.height<He.height&&(he.height=He.height),Me.putImageData(He,0,0),K.drawImage(he,0,0,He.width,He.height,dn.x,dn.y,He.width,He.height),ge++,v.canvas(`  - Including composite from ${Be}, historyIndex=${Pe.historyIndex} (${Pe.history.length} total entries)`)}if(_e<ee.length){wo(gt);return}if(G!==uo.current)return;if(v.canvas(`[displayCompositeExcludingActive] Found ${ge} visible masks (excluding active)`),!ce||!K||ge===0){v.canvas("[displayCompositeExcludingActive] No masks - clearing display"),ro.current=M,P.setState({compositeExcludingActiveMask:null}),zo(Be=>Be+1);return}const et=K.getImageData(0,0,ce.width,ce.height);la(et,Fe,Ue.STROKE_ALPHA),K.putImageData(et,0,0);const Ws=ce.toDataURL();v.canvas(`[displayCompositeExcludingActive] Setting composite with ${ge} masks`),ro.current=M,P.setState({compositeExcludingActiveMask:Ws}),zo(Be=>Be+1)};wo(gt)},[jt]),Jo=d.useCallback(()=>{const k=m||"-1";v.canvas(`[handleUndoMask] Undoing for annotationId=${k}`),S(k)},[m,S]),Vo=d.useCallback(()=>{const k=m||"-1";v.canvas(`[handleRedoMask] Redoing for annotationId=${k}`);const{redoPerAnnotationMask:M}=P.getState();M(k)},[m]),Is=d.useCallback(async()=>{const k=P.getState(),M=m;if(!M||M==="-1"){v.canvas("[handleSaveUserRect] Invalid rect ID: "+M);return}const U=k.perAnnotationMasks[M];if(!U||U.history.length===0||U.historyIndex<0){v.canvas("[handleSaveUserRect] No mask history available for "+M);return}try{ue(M),await Jn(M)&&J("save")}catch(G){v.canvas(`[handleSaveUserRect] Error: ${G}`)}},[m,J]),Cs=d.useCallback(()=>Ye(!0),[]),js=d.useCallback(()=>{Ye(!1);const k=m;!k||!k.startsWith("-")||k==="-1"||(P.getState().removeUserRect(k),ue(void 0),st(),v.canvas(`[handleDiscardUserRect] Discarded rect ${k}`))},[m,st]);d.useEffect(()=>{v.canvas("[useEffect] activeAnnotationId or masks changed - recomputing excluding-active composite"),Go()},[m,$,Go]),d.useEffect(()=>{(async()=>{var G;const M=(G=$[-1])==null?void 0:G.maskUrl,U=await Va(M??null);oe(U)})()},[(sn=$[-1])==null?void 0:sn.maskUrl]),Ni({tool:o,toolCursor:lo,isBrushCursorVisible:Xo,debugImageUrl:l,selectedCaesarAnnotation:E,onUndo:Jo,onRedo:Vo,stageRef:pt,setIsPanMode:Ce,setNoRectangleWarning:O});const rt=d.useCallback(({x:k,y:M,width:U,height:G})=>{if(!N)return;const se=40,ee=(we.stageSize.width-2*se)/U,ce=(we.stageSize.height-2*se)/G,K=Math.min(ee,ce),he=K/co,Me=k+U/2,ge=M+G/2,_e=we.stageSize.width/2-Me*K,Qe=we.stageSize.height/2-ge*K,gt=(we.stageSize.width-N.naturalWidth*K)/2,Te=(we.stageSize.height-N.naturalHeight*K)/2,et={x:_e-gt,y:Qe-Te};io(he,et)},[N,co,io,we.stageSize.width,we.stageSize.height]),As=d.useCallback(k=>{var ee,ce,K,he,Me;if(Y)return;const M=pt.current;if(!M){(ce=(ee=t.predModBrushRef)==null?void 0:ee.current)==null||ce.pointerDown(k);return}const U=M.getPointerPosition(),G=U?M.getIntersection(U):null,se=((K=G==null?void 0:G.getClassName)==null?void 0:K.call(G))==="Rect";!m&&!E&&!se&&O(!0),!se&&((Me=(he=t.predModBrushRef)==null?void 0:he.current)==null||Me.pointerDown(k))},[Y,m,E,t.predModBrushRef,pt]),Ms=d.useCallback(k=>{var M,U;(U=(M=t.predModBrushRef)==null?void 0:M.current)==null||U.pointerMove(k)},[t.predModBrushRef]),Rs=d.useCallback(()=>{var k,M;(M=(k=t.predModBrushRef)==null?void 0:k.current)==null||M.pointerUp()},[t.predModBrushRef]),Es=d.useCallback((k,M)=>{if(O(!1),E===M){st(),I(null),f(null);return}I(M),f(M),rt(k)},[E,st,I,f,rt,O]),_s=d.useCallback((k,M)=>{if(O(!1),q===M){st(),ue(void 0),f(null);return}ue(M),f(M),rt(k)},[q,st,f,rt,O]),Ts=d.useCallback(()=>me(!0),[]),Ps=d.useCallback(()=>me(!1),[]),Ds=d.useCallback(()=>B(!0),[]),Us=d.useCallback(()=>B(!1),[]),zs=d.useCallback(async()=>{const k=P.getState(),M=k.perAnnotationMasks[-1];if(!M||M.historyIndex<0){v.canvas("[handleIdentifyNewObject] No mask available for -1");return}try{const U=M.history[M.historyIndex],G=M.maskUrl;if(!G||!U){v.canvas("[handleIdentifyNewObject] No valid mask for -1");return}v.canvas("[handleIdentifyNewObject] Computing bounds from -1 mask");const se=await Gn(G);if(!se){v.canvas("[handleIdentifyNewObject] Could not extract bounds from mask");return}const ee=M.maskBounds??U.bounds,ce={...se,x:se.x+((ee==null?void 0:ee.x)??0),y:se.y+((ee==null?void 0:ee.y)??0)},K=k.addUserRect(ce);v.canvas(`[handleIdentifyNewObject] Created user rect ${K}: ${JSON.stringify(ce)}`);const he=M.history.slice(0,M.historyIndex+1);k.setPerAnnotationMask(K,G,ee);for(let ge=0;ge<he.length;ge+=1){const _e=he[ge],Qe=M.samPointHistory?qn(M.samPointHistory,ge):void 0;k.pushPerAnnotationMaskHistory(K,_e,Qe)}k.markPerAnnotationMaskSaved(K),v.canvas(`[handleIdentifyNewObject] Initialized mask history for ${K} with ${he.length} entries`),k.clearAnnotations("-1","sam2_mask"),k.clearPerAnnotationMaskHistory("-1"),v.canvas("[handleIdentifyNewObject] Cleared -1 mask history and mask URL");const Me=k.annotations.filter(ge=>ge.type==="point"&&(ge.annotationId??"-1")==="-1");if(Me.length>0){k.clearAnnotations("-1","point");for(const ge of Me){const{id:_e,...Qe}=ge;k.addAnnotation({...Qe,annotationId:K})}v.canvas(`[handleIdentifyNewObject] Transferred ${Me.length} SAM points from -1 to ${K}`)}f(K),v.canvas(`[handleIdentifyNewObject] Set new user rect ${K} as active annotation`),ue(K),v.canvas(`[handleIdentifyNewObject] Selected user rect ${K} for visual highlight`),rt(ce),v.canvas(`[handleIdentifyNewObject] Zoomed to new rect at bounds: ${JSON.stringify(ce)}`),J("identify")}catch(U){v.canvas(`[handleIdentifyNewObject] Error: ${U}`)}},[f,ue,rt,J]),Os=d.useCallback(()=>{It(!0)},[]),Ls=d.useCallback(()=>{var k,M;It(!1),o==="modifier_brush"&&((M=(k=t.predModBrushRef)==null?void 0:k.current)==null||M.pointerUp())},[o,t.predModBrushRef]),Bs=d.useCallback(()=>{var k,M;Y||(M=(k=t.predModBrushRef)==null?void 0:k.current)==null||M.pointerUp(),Ce(!Y)},[Y,t.predModBrushRef]);d.useEffect(()=>{if(l)return;let k=0,M=0,U=null;const G=()=>{St({x:k,y:M}),U=null},se=ee=>{k=ee.clientX,M=ee.clientY,U===null&&(U=requestAnimationFrame(G))};return document.addEventListener("mousemove",se),()=>{document.removeEventListener("mousemove",se),U!==null&&cancelAnimationFrame(U)}},[l]);const Hs=t.predModBrushSize*2,Qo=!!(ve||F||(te||le)&&$e&&!Oe||m||(((rn=$[ht])==null?void 0:rn.historyIndex)??-1)>=0||(((an=$[ht])==null?void 0:an.historyIndex)??-1)<(((cn=$[ht])==null?void 0:cn.history.length)??0)-1||_||D);if(d.useEffect(()=>{Qo||Ee(!1)},[Qo]),d.useEffect(()=>{Ee(!1)},[F,ve,te,le]),!h){const k=!!c&&Lo.current;return a.jsxs(li,{children:[k&&Do&&a.jsx(di,{src:Do,alt:"","aria-hidden":"true"}),k?a.jsxs(ui,{children:[a.jsx(_n,{"aria-hidden":"true"}),a.jsx("span",{children:"Image loading..."})]}):c?"Click 'Next subject' to start classifying":"Log in to get started"]})}const ho=$[ht]||{history:[],historyIndex:-1},en=ho.historyIndex<0,tn=ho.historyIndex>=ho.history.length-1,on=m&&A[m]?A[m].markLabel:E&&T?(ln=T.filter(k=>k.toolType==="rectangle").find(k=>k.markId===E))==null?void 0:ln.markLabel:void 0,Fs=()=>{ae(!0),setTimeout(()=>{xe(!1)},100)},Ns=()=>{H(!0),ae(!0),setTimeout(()=>{xe(!1)},100)};return a.jsxs(oi,{children:[a.jsx(es,{zoom:Wo,isPanMode:Y,isDebugMode:!!l,activeAnnotationId:m,disableUndo:en,disableRedo:tn,hasWholeImageMask:oo,isUserRectSelected:!!m&&m!=="-1",hasUnsavedUserRectMaskChanges:Z,onZoomIn:ks,onZoomOut:ws,onZoomFit:$s,onZoom100:vs,onTogglePan:Bs,onUndo:Jo,onRedo:Vo,onIdentifyNewObject:zs,onSaveUserRect:Is,onDiscardUserRect:Cs}),l&&a.jsxs(a.Fragment,{children:[a.jsxs(hi,{children:["Debug: Green = foreground (positive), Red = background (negative) ",a.jsx("button",{style:{marginLeft:"auto",padding:"4px 8px",cursor:"pointer",background:"rgba(255,255,255,0.3)",border:"1px solid white",color:"white",borderRadius:"4px"},onClick:()=>j(null),children:"Close ✕"})]}),a.jsx(Bi,{debugImageUrl:l,debugMasks:p,maskSelectionInfo:u,debugCrop:y,debugPrompts:g})]}),!l&&a.jsx("div",{style:{width:"100%"},children:a.jsxs(ni,{ref:hs,onMouseEnter:Os,onMouseLeave:Ls,children:[a.jsx(Zs,{ref:pt,width:we.stageSize.width,height:we.stageSize.height,onClick:ms,onContextMenu:fs,onMouseMove:ys,onMouseUp:qo,onMouseLeave:qo,onWheel:xs,onPointerDown:o==="modifier_brush"?As:void 0,onPointerMove:o==="modifier_brush"?Ms:void 0,onPointerUp:o==="modifier_brush"?Rs:void 0,children:a.jsx(Gs,{imageSmoothingEnabled:!1,children:a.jsxs(gn,{ref:us,x:Yo,y:Ko,scaleX:nt,scaleY:nt,draggable:Y,onDragMove:bs,imageSmoothingEnabled:!1,children:[N&&a.jsx(Bt,{image:N,width:(N==null?void 0:N.naturalWidth)??0,height:(N==null?void 0:N.naturalHeight)??0,opacity:ss,listening:Y,scaleY:-1,offsetY:N==null?void 0:N.naturalWidth}),a.jsxs(gn,{ref:Bo,listening:!X,children:[V&&a.jsx(Bt,{ref:Oo,image:V,visible:ao,width:(N==null?void 0:N.naturalWidth)??0,height:(N==null?void 0:N.naturalHeight)??0,opacity:t.nonSelectedMaskOpacity,listening:!1}),a.jsx(Oa,{image:N,externalMask:ps,externalMaskBounds:ls,opacity:t.selectedMaskOpacity,enableBrush:!Y&&Fo&&o==="modifier_brush"&&!fe&&!pe&&!no,brushRadius:t.predModBrushSize,brushMode:t.predModBrushMode,width:(N==null?void 0:N.naturalWidth)??0,height:(N==null?void 0:N.naturalHeight)??0,ref:t.predModBrushRef,contentScale:nt}),T&&a.jsx(Xa,{annotations:T,showTool2Boxes:r,selectedId:E||void 0,toolCursor:lo,setToolTip:$t,onAnnotationClick:Es,onMouseEnterRect:Ts,onMouseLeaveRect:Ps,isUserRectHovered:pe}),a.jsx(Ga,{onRectClick:_s,selectedRectId:q,toolCursor:lo,onMouseEnter:Ds,onMouseLeave:Us,isHoveringOverCaesarRect:fe,setToolTip:$t})]}),Mt&&a.jsx(Bt,{image:Mt,width:Mt.naturalWidth??0,height:Mt.naturalHeight??0,listening:!1,opacity:1}),b.map((k,M)=>a.jsx(Vn,{annotation:k,index:M,contentScale:nt,debugImageUrl:l,showPoints:s},k.id??M)),Le.length>1&&a.jsx(yt,{points:Le.flatMap(k=>[k.x,k.y]),stroke:o==="brush"?"lime":"cyan",strokeWidth:o==="brush"?t.brushSize*4/nt:3,lineCap:"round",lineJoin:"round"})]})})}),(m||!en||!tn||_||D)&&a.jsxs(gi,{$isEditingMinusOne:ht==="-1",onMouseEnter:()=>Ee(!0),onMouseLeave:()=>Ee(!1),children:[(_||D)&&a.jsx(_n,{"aria-hidden":"true"}),_?"AI-generated masks loading...":D?"Checking for previous work...":on?`Marking a ${on.toLowerCase()}`:"Marking a new object"]}),ve&&(m==null?void 0:m.startsWith("-"))&&m!=="-1"&&a.jsxs(yo,{role:"alertdialog","aria-label":"Confirm discard",onMouseEnter:()=>Ee(!0),onMouseLeave:()=>Ee(!1),children:["⚠️ Are you sure you want to delete the mask for this object?",a.jsx(at,{type:"button",onClick:js,title:"Delete this box and its mask",children:"Delete"}),a.jsx(at,{type:"button",onClick:()=>Ye(!1),title:"Keep this box and its mask",children:"Cancel"})]}),F&&a.jsxs(yo,{role:"alertdialog","aria-label":"Submit reminder",onMouseEnter:()=>Ee(!0),onMouseLeave:()=>Ee(!1),children:["⚠️ Remember that you must submit your classification to send your changes to Zooniverse.",a.jsx(at,{type:"button",onClick:()=>L(null),title:"Dismiss reminder",children:"Okay"}),a.jsx(at,{type:"button",onClick:()=>{de.current.add(F),L(null)},title:"Hide this reminder for the rest of this session",children:"Do not remind me again"})]}),(te||le)&&$e&&!Oe&&a.jsxs(yo,{$isLeaving:le,onMouseEnter:()=>Ee(!0),onMouseLeave:()=>Ee(!1),children:[`⚠️ You have not selected a bounding box so we assume you are annotating an artifact or contaminant that was completely missed by the machine learning model. Did you remember to check that good boxes using the "Show good boxes" button to make sure the object hasn't already been masked?`,a.jsx(at,{type:"button",onClick:Fs,title:"Dismiss warning",children:"Okay"}),a.jsx(at,{type:"button",onClick:Ns,title:"Hide this warning for the rest of this session",children:"Do not remind me again"})]}),is&&a.jsxs(mi,{$expanded:!Q,onMouseEnter:()=>ke(!0),onMouseLeave:()=>ke(!1),children:[a.jsxs(fi,{children:[a.jsx("strong",{children:Q?"Instructions":o==="point"?"Instructions for the SAM Point Tool":"Instructions for the Mask Modifier Tool"}),a.jsx(xi,{type:"button",onClick:()=>ie(k=>!k),"aria-label":Q?"Show instructions":"Hide instructions",title:Q?"Show instructions":"Hide instructions",children:Q?"Show":"Hide"})]}),!Q&&a.jsxs(yi,{children:[a.jsxs("p",{children:["These instructions are intended as a quick reference. Click the ",a.jsx("i",{children:"Tutorial"})," button (or ",a.jsx(ct,{href:"https://www.astronaimee.com/Artifact-InSPECtor-CFE/",target:"_blank",rel:"noopener noreferrer",children:"this link"}),") to open a more detailed tutorial in another browser window."]}),o==="point"?a.jsxs(a.Fragment,{children:[a.jsx("p",{children:"Add SAM prompts by clicking in the image area for the currently selected bounding box."}),a.jsx("p",{children:"Point types:"}),a.jsxs("ul",{children:[a.jsx("li",{children:"Left-click adds a positive point (green) to include that region."}),a.jsx("li",{children:"Right-click adds a negative point (red) to exclude that region."})]}),a.jsx("p",{children:"Each new point updates the mask prediction for the selected bounding box."}),a.jsx("p",{children:'Use the "Clear SAM points" button in the Tools panel to reset the point prompts for the currently selected bounding box. The button becomes active when you have added at least one SAM point — either while annotating a new object (with no bounding box selected), or after selecting a bounding box that already has SAM points associated with it.'}),a.jsx("p",{children:"If no bounding box is selected, we assume you are marking an object that was missed by our automatic detectors."}),a.jsx("p",{children:'Once you have finished marking a new object, click the "Identify new object" button in the subject viewer toolbar.'}),a.jsx("p",{children:"You can undo or redo your edits using the buttons in the subject viewer toolbar or using the following keyboard shortcuts while the mouse pointer is over the subject viewer."}),a.jsxs("ul",{children:[a.jsx("li",{children:"Undo: Ctrl+Z / ⌘Z"}),a.jsx("li",{children:"Redo: Ctrl+Y / ⌘⇧Z"})]})]}):a.jsxs(a.Fragment,{children:[a.jsx("p",{children:a.jsx("strong",{children:"How to edit an existing mask"})}),"Before you start, remember that we don't need you to mask horizontal stripes or small clusters of bright pixels because these are known side-effects of the way we made the images and we already know their locations. See step 3 of the ",a.jsx(ct,{href:"https://www.astronaimee.com/Artifact-InSPECtor-CFE/",target:"_blank",rel:"noopener noreferrer",children:" tutorial "})," for more details.",a.jsxs("ol",{children:[a.jsx("li",{children:"Click a box border once to select that box and zoom in to make editing easier. You can click the selected box border again to deselect it."}),a.jsxs("li",{children:["Choose ",a.jsx("em",{children:"Paint"})," (add to the mask) or ",a.jsx("em",{children:"Erase"})," (remove from the mask) in the ",a.jsx("em",{children:"Mask Modifier Tools"})," section of the tool palette."]}),a.jsxs("li",{children:["Click and drag inside the image, away from the box border. Your strokes change the selected box's existing mask by adding or subtracting pixels, depending on whether ",a.jsx("em",{children:"Paint"})," or ",a.jsx("em",{children:"Erase"})," is selected."]}),a.jsxs("li",{children:["You can adjust ",a.jsx("em",{children:"Modifier size"})," in the ",a.jsx("em",{children:"Mask Modifier Tools"})," section to change the brush diameter; the grey wedge below the slider shows the brush size at each point along it."]}),a.jsxs("li",{children:["In the ",a.jsx("em",{children:"Mask Visibility Tools"})," section, use ",a.jsx("em",{children:"Other masks opacity"})," to fade the unselected masks. If the selected mask is hard to see past, use ",a.jsx("em",{children:"Selected mask opacity"})," to fade it out (down to fully transparent). Painting and erasing still work while it is faded."]}),a.jsxs("li",{children:["Once you have painted on a box, its border becomes dashed. Click ",a.jsx("em",{children:"Ready to submit"})," in the viewer toolbar when you have finished editing it. Boxes marked as ready are outlined in violet."]})]}),a.jsx("p",{children:a.jsx("strong",{children:"How to show masks that were classified as good"})}),a.jsxs("p",{children:["By default, the viewer shows boxes and masks that Classic Artifact InSPECtor volunteers marked as needing fixes. To inspect or edit masks they marked as good, click ",a.jsx("em",{children:"Show good masks"})," under ",a.jsx("em",{children:"Good mask visibility"})," in the ",a.jsx("em",{children:"Mask Visibility Tools"})," section of the tool palette."]}),a.jsx("p",{children:a.jsx("strong",{children:"How to create a box and mask for a new object"})}),a.jsxs("ol",{children:[a.jsx("li",{children:"First make sure you have checked the set of good masks to make sure the object you want to add has not already been detected."}),a.jsxs("li",{children:["Make sure no box is selected, then select ",a.jsx("em",{children:"Paint"}),"."]}),a.jsxs("li",{children:["Click and drag over the object to paint its mask. A warning appears to explain that you are marking a new object; dismiss it or choose ",a.jsx("em",{children:"Do not remind me again"})," to suppress future warnings for this session."]}),a.jsxs("li",{children:["When the mask is ready, click ",a.jsx("em",{children:"Identify new object"})," in the viewer toolbar to create a box around it."]}),a.jsxs("li",{children:["To edit a box you created, select it and paint as usual. Click ",a.jsx("em",{children:"Ready to submit"})," afterward to commit the updated mask (and box). To remove a box you created, select it and click ",a.jsx("em",{children:"Discard"}),", then confirm that you want to delete its mask."]})]}),a.jsx("p",{children:a.jsx("strong",{children:"Undo and redo"})}),a.jsxs("p",{children:["Each box has its own editing history. Select a box, then use ",a.jsx("em",{children:"Undo"})," or ",a.jsx("em",{children:"Redo"})," in the viewer toolbar to step through that box's mask edits."]})]}),a.jsx("p",{children:a.jsx("strong",{children:"Submitting your classification"})}),a.jsxs("p",{children:["When you have finished, click ",a.jsx("em",{children:"Submit Classification"})," in the sidebar. If any boxes have been edited but not marked as ",a.jsx("em",{children:"Ready to submit"}),", you will be asked whether to mark them all as ready first. After a successful submission you can keep working on this image or click ",a.jsx("em",{children:"Next Subject"})," to load a new one."]}),a.jsx("p",{children:a.jsx("strong",{children:"Zoom and pan"})}),a.jsxs("ul",{children:[a.jsxs("li",{children:["You can use ",a.jsx("em",{children:"+"})," and ",a.jsx("em",{children:"-"})," in the viewer toolbar to zoom in and out."]}),a.jsx("li",{children:"Alternatively, scroll the mouse wheel over the image to zoom toward or away from the pointer. You can zoom in up to 3000%."}),a.jsxs("li",{children:["Click ",a.jsx("em",{children:"Fit"})," to fit the whole image in the viewer, or ",a.jsx("em",{children:"100%"})," to view image pixels at screen-pixel size."]}),a.jsxs("li",{children:["Click ",a.jsx("em",{children:"Pan"}),", then click and drag the image to move it. Click ",a.jsx("em",{children:"Pan"})," again to return to the mask modifier tool."]})]})]},o)]}),a.jsx(Ai,{annotations:T,userRects:A,workflowBoxTypes:z,expanded:be,onToggleExpanded:()=>je(k=>!k),onMouseEnter:()=>ot(!0),onMouseLeave:()=>ot(!1)})]})}),a.jsx(wi,{tool:"modifier_brush",size:Hs,visible:Xo,x:vt.x,y:vt.y}),Je.visible&&a.jsx("div",{style:{position:"absolute",top:Je.y,left:Je.x,background:"rgba(0,0,0,0.75)",color:"white",padding:"4px 8px",borderRadius:"4px",pointerEvents:"none",whiteSpace:"nowrap",zIndex:1e3},children:Je.text})]})},Yi=x.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${e.spacing.sm};
+  padding: ${e.spacing.md};
+  background: ${e.colors.background.surface};
+  border: ${e.borders.width.thin} solid ${e.colors.border};
+  border-radius: ${e.borders.radius.lg};
+  width: 100%;
+`,it=vr,$o=wt,Dn=Wn;x(wt)`
+  color: ${e.colors.error};
+  border-color: ${e.colors.error};
+  background: ${e.colors.secondary};
+  margin-top: ${e.spacing.xs};
+
+  &:hover:not(:disabled) {
+    background: ${e.colors.error};
+    color: ${e.colors.text.inverse};
+  }
+`;const Ki=x(wt)`
+  display: none;
+`,qi=x(wt)`
+  display: none;
+`;x(wt)`
+  display: none;
+`;const Xi=x.div`
+  display: none;
+`;x.label`
+  display: flex;
+  align-items: center;
+  gap: ${e.spacing.md};
+  font-size: ${e.typography.size.sm};
+  color: ${e.colors.text.primary};
+  cursor: pointer;
+
+  input {
+    cursor: pointer;
+  }
+`;const zt=x.div`
+  display: flex;
+  align-items: center;
+  gap: ${e.spacing.sm};
+`,Ot=x.input`
+  cursor: pointer;
+  max-width: 120px;
+  flex: 1;
+`,Zi=x.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${e.spacing.sm};
+  align-items: flex-start;
+  margin-top: ${e.spacing.xs};
+`;x.input`
+  width: 40px;
+  cursor: ${o=>o.$inactive?"not-allowed":"pointer"};
+  background: ${o=>{if(o.$inactive)return`${e.colors.neutral.dark}`;const t=o.$mode==="subtract"?"5%":"95%";return`linear-gradient(
+      to right,
+      ${e.colors.success} 0%,
+      ${e.colors.success} ${t},
+      ${e.colors.error} ${t},
+      ${e.colors.error} 100%
+    )`}};
+  border-radius: ${e.borders.radius.base};
+  border: 1px solid ${e.colors.text.inverse};
+  height: 11px;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  &:disabled {
+    opacity: 0.7;
+  }
+    
+`;x.span`
+  font-size: 11px;
+  line-height: 1.5;
+  color: ${e.colors.text.secondary};
+  margin-top: ${e.spacing.md};
+  display: block;
+  white-space: pre-line;
+`;const vo=x.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${e.spacing.sm};
+  width: 100%;
+`;function Gi({tool:o,brushProps:t,showTool2Boxes:n,onToggleTool2Boxes:s,onBrushSizeChange:r,onPredModBrushModeChange:i,onPredModBrushSizeChange:c,onSelectedMaskOpacityChange:h,onNonSelectedMaskOpacityChange:l,coordinateFix:p,onCoordinateFixChange:u,debugCoords:y,onDebugCoordsChange:g}){const b=o==="modifier_brush",m={margin:0,minWidth:"110px"},S=f=>{const w=f.currentTarget.getBoundingClientRect(),$=Math.max(w.width-20,1),C=Math.min(Math.max((f.clientX-w.left)/$,0),1);c(Math.round((1+9*C)*10)/10)};return a.jsxs(Yi,{children:[a.jsx(Dn,{children:"Mask Modifier Tools"}),a.jsxs(Zi,{children:[a.jsxs(vo,{children:[a.jsx(Ki,{disabled:!0,onClick:()=>{var f,w;return(w=(f=t.predModBrushRef)==null?void 0:f.current)==null?void 0:w.undo()},children:"Undo"}),a.jsx(qi,{disabled:!0,onClick:()=>{var f,w;return(w=(f=t.predModBrushRef)==null?void 0:f.current)==null?void 0:w.redo()},children:"Redo"})]}),a.jsxs(zt,{style:{flexDirection:"column",alignItems:"stretch",width:"100%"},children:[a.jsx(it,{style:m,children:"Modifier mode:"}),a.jsxs(vo,{style:{flexDirection:"row"},children:[a.jsxs($o,{style:{display:"flex",alignItems:"center",justifyContent:"center"},type:"button",$active:t.predModBrushMode==="add","aria-pressed":t.predModBrushMode==="add","aria-label":"Paint brush: add to the mask",title:"Paint brush: add to the mask",disabled:!b,onClick:()=>i("add"),children:[a.jsxs("svg",{width:"18",height:"18",viewBox:"0 0 24 24",style:{transform:"translateY(2px) scale(1.35)"},fill:"none",stroke:"currentColor",strokeWidth:"2",strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":"true",children:[a.jsx("path",{d:"M18.4 2.6a2 2 0 0 1 2.8 2.8L12 14.6l-3.2-3.2z"}),a.jsx("path",{d:"M8.8 11.4C6.4 11.4 5 13 5 15c0 1.6-.8 2.6-2 3.4 3.6 1.6 8 .4 8-3.4"})]}),a.jsx("span",{style:{marginLeft:6},children:"Paint"})]}),a.jsxs($o,{style:{display:"flex",alignItems:"center",justifyContent:"center"},type:"button",$active:t.predModBrushMode==="subtract","aria-pressed":t.predModBrushMode==="subtract","aria-label":"Eraser: remove from the mask",title:"Eraser: remove from the mask",disabled:!b,onClick:()=>i("subtract"),children:[a.jsxs("svg",{width:"18",height:"18",viewBox:"0 0 24 24",style:{transform:"scale(1.35)"},fill:"none",stroke:"currentColor",strokeWidth:"2",strokeLinecap:"round",strokeLinejoin:"round","aria-hidden":"true",children:[a.jsx("path",{d:"M20 20H9l-5.3-5.3a1 1 0 0 1 0-1.4l9-9a1 1 0 0 1 1.4 0l6.6 6.6a1 1 0 0 1 0 1.4L12 20"}),a.jsx("path",{d:"M7 11l6 6"})]}),a.jsx("span",{style:{marginLeft:6},children:"Erase"})]})]})]}),a.jsxs(zt,{style:{flexDirection:"column",alignItems:"stretch",width:"100%"},children:[a.jsx(it,{style:m,children:"Modifier size:"}),a.jsx(Ot,{type:"range",min:"1",max:"10",step:"0.1",value:t.predModBrushSize,id:"predmod_brush_size_slider",style:{maxWidth:"none",width:"100%",margin:0},disabled:!b,onChange:f=>c(parseFloat(f.target.value))}),a.jsxs("div",{"aria-hidden":"true",onPointerDown:f=>{b&&(f.currentTarget.setPointerCapture(f.pointerId),S(f))},onPointerMove:f=>{f.currentTarget.hasPointerCapture(f.pointerId)&&S(f)},style:{position:"relative",width:"100%",height:40,marginTop:2,opacity:b?1:.4,cursor:b?"ew-resize":"default",touchAction:"none"},children:[a.jsx("svg",{viewBox:"0 0 100 40",preserveAspectRatio:"none",shapeRendering:"crispEdges",style:{position:"absolute",left:0,top:0,width:"calc(100% - 20px)",height:40},children:a.jsx("polygon",{points:"0,18 100,0 100,40 0,22",fill:"#888"})}),a.jsx("div",{style:{position:"absolute",right:0,top:0,width:40,height:40,borderRadius:"50%",background:"#888"}}),a.jsx("div",{style:{position:"absolute",top:0,width:2,height:40,left:`calc((100% - 20px) * ${(t.predModBrushSize-1)/9})`,background:"#1e90ff"}})]})]}),a.jsx(Dn,{style:{marginTop:e.spacing.md,marginBottom:e.spacing.xs},children:"Mask Visibility Tools"}),a.jsxs(zt,{style:{flexDirection:"column",alignItems:"stretch",width:"100%"},children:[a.jsx(it,{style:m,children:"Selected mask opacity:"}),a.jsx(Ot,{type:"range",min:"0",max:"1",step:"0.05",value:t.selectedMaskOpacity,id:"selected_mask_opacity_slider",style:{maxWidth:"none",width:"100%",margin:0},onChange:f=>h(parseFloat(f.target.value))}),a.jsx(it,{style:m,children:"Other masks opacity:"}),a.jsx(Ot,{type:"range",min:"0",max:"1",step:"0.05",value:t.nonSelectedMaskOpacity,id:"non_selected_mask_opacity_slider",style:{maxWidth:"none",width:"100%",margin:0},onChange:f=>l(parseFloat(f.target.value))}),a.jsx(it,{style:m,children:"Good mask visibility:"}),a.jsx(vo,{children:a.jsx($o,{type:"button",$active:n,"aria-pressed":n,onClick:s,children:n?"Hide good masks":"Show good masks"})})]})]}),a.jsx(Xi,{children:a.jsxs(zt,{children:[a.jsx(it,{style:{margin:0},children:"Brush size"}),a.jsx(Ot,{type:"range",min:"1",max:"10",defaultValue:"5",id:"brush_size_slider",onChange:f=>{r(parseFloat(f.target.value))}})]})}),!1]})}const Ji=x.div`
+  width: 320px;
+  padding: ${e.spacing.lg};
+  background: ${e.colors.background.surface};
+  border: ${e.borders.width.thin} solid ${e.colors.border};
+  border-radius: ${e.borders.radius.lg};
+  display: flex;
+  flex-direction: column;
+  gap: ${e.spacing.lg};
+`;x.h3`
+  margin: 0;
+  color: ${e.colors.text.primary};
+  font-size: ${e.typography.heading.h4.fontSize};
+  font-weight: ${e.typography.fontWeight.medium};
+`;x.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${e.spacing.sm};
+`;x.label`
+  color: ${e.colors.text.primary};
+  font-size: ${e.typography.size.sm};
+  font-weight: ${e.typography.fontWeight.medium};
+  cursor: default;
+`;x.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${e.spacing.xs};
+`;x.label`
+  color: ${e.colors.text.secondary};
+  font-size: ${e.typography.size.sm};
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: ${e.spacing.sm};
+
+  input {
+    cursor: pointer;
+  }
+
+  &:hover {
+    color: ${e.colors.text.primary};
+  }
+`;x.textarea`
+  padding: ${e.spacing.md};
+  border-radius: ${e.borders.radius.base};
+  border: ${e.borders.width.thin} solid ${e.colors.border};
+  background: ${e.colors.secondary};
+  color: ${e.colors.text.inverse};
+  font-family: ${e.typography.fontFamily};
+  font-size: ${e.typography.size.sm};
+  resize: vertical;
+  transition: all ${e.transitions.base};
+
+  &:focus {
+    outline: none;
+    border-color: ${e.colors.primary};
+    box-shadow: 0 0 0 3px ${e.colors.primaryLight}40;
+  }
+
+  &::placeholder {
+    color: ${e.colors.neutral.dark};
+  }
+`;const Vi=x.button`
+  padding: ${e.spacing.md} ${e.spacing.lg};
+  background: ${e.colors.primary};
+  border: none;
+  border-radius: ${e.borders.radius.base};
+  color: ${e.colors.secondary};
+  font-family: ${e.typography.fontFamily};
+  font-size: ${e.typography.size.sm};
+  font-weight: ${e.typography.fontWeight.medium};
+  cursor: pointer;
+  margin-top: auto;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  transition: all ${e.transitions.base};
+
+  &:hover {
+    opacity: 0.9;
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+`;x.button`
+  padding: ${e.spacing.sm} ${e.spacing.md};
+  background: ${e.colors.neutral.light};
+  border: 1px solid ${e.colors.border};
+  border-radius: ${e.borders.radius.base};
+  color: ${e.colors.text.secondary};
+  font-family: ${e.typography.fontFamily};
+  font-size: ${e.typography.size.xs};
+  font-weight: ${e.typography.fontWeight.regular};
+  cursor: pointer;
+  margin-left: auto;
+  margin-right: auto;
+  width: fit-content;
+  transition: all ${e.transitions.base};
+
+  &:hover {
+    background: ${e.colors.neutral.medium};
+    color: ${e.colors.text.primary};
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+`;const Qi=x.section`
+  display: flex;
+  flex-direction: column;
+  gap: ${e.spacing.sm};
+  min-width: 0;
+  padding: ${e.spacing.lg};
+  background: ${e.colors.background.surface};
+  border: ${e.borders.width.thin} solid ${e.colors.border};
+  border-radius: ${e.borders.radius.lg};
+`,ec=x(Wn).attrs({as:"h3"})``,tc=x.h4`
+  margin: 0;
+  color: ${e.colors.text.primary};
+  font-size: ${e.typography.size.base};
+  font-weight: ${e.typography.fontWeight.medium};
+  overflow-wrap: anywhere;
+`,oc=x.a`
+  color: ${e.colors.primary};
+  text-decoration: underline;
+  text-decoration-color: ${e.colors.primary};
+  text-underline-offset: 2px;
+
+  &:hover {
+    color: ${e.colors.primary};
+  }
+`,Un=x.button`
+  align-self: stretch;
+  margin-top: ${e.spacing.sm};
+  padding: ${e.spacing.md} ${e.spacing.lg};
+  border: none;
+  border-radius: ${e.borders.radius.base};
+  background: ${e.colors.background.surface};
+  color: ${e.colors.primary};
+  font-family: ${e.typography.fontFamily};
+  font-size: ${e.typography.size.sm};
+  font-weight: ${e.typography.fontWeight.medium};
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px ${e.colors.primary};
+
+  &:hover {
+    background: ${e.colors.primaryLight};
+    color: ${e.colors.secondary};
+  }
+`,qe=x.p`
+  margin: 0;
+  color: ${e.colors.text.secondary};
+  font-size: ${e.typography.size.sm};
+  overflow-wrap: anywhere;
+`,nc=x.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${e.spacing.sm};
+`,sc=x.article`
+  display: flex;
+  flex-direction: column;
+  gap: ${e.spacing.xs};
+  padding: ${e.spacing.sm};
+  border: ${e.borders.width.thin} solid ${e.colors.border};
+  border-radius: ${e.borders.radius.base};
+  background: ${e.colors.background.elevated};
+  min-width: 0;
+`,rc=x.div`
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: ${e.colors.text.secondary};
+  font-size: ${e.typography.size.xs};
+
+  strong {
+    color: ${e.colors.text.primary};
+    overflow-wrap: anywhere;
+  }
+`,ac=x.p`
+  margin: 0;
+  color: ${e.colors.text.primary};
+  font-size: ${e.typography.size.sm};
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+`,zn=x.button`
+  align-self: flex-start;
+  padding: ${e.spacing.xs} ${e.spacing.sm};
+  border: ${e.borders.width.thin} solid ${e.colors.border};
+  border-radius: ${e.borders.radius.base};
+  background: ${e.colors.background.surface};
+  color: ${e.colors.text.primary};
+  font: inherit;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: wait;
+  }
+`,ts=x.div`
+  margin-top: auto;
+  background: ${e.colors.error};
+  color: ${e.colors.text.inverse};
+  padding: ${e.spacing.md};
+  border-radius: ${e.borders.radius.base};
+  font-size: ${e.typography.size.sm};
+  font-weight: ${e.typography.fontWeight.medium};
+  display: flex;
+  flex-direction: column;
+  gap: ${e.spacing.sm};
+
+  & + button {
+    margin-top: ${e.spacing.sm};
+  }
+`,ic=x(ts)`
+  background: #2e9e57;
+`,Lt=x.button`
+  padding: 6px 14px;
+  background: transparent;
+  color: ${e.colors.text.inverse};
+  border: 1px solid ${e.colors.text.inverse};
+  border-radius: ${e.borders.radius.base};
+  font-family: ${e.typography.fontFamily};
+  font-size: ${e.typography.size.sm};
+  font-weight: ${e.typography.fontWeight.medium};
+  cursor: pointer;
+
+  &:hover {
+    background: ${e.colors.text.inverse};
+    color: ${e.colors.error};
+  }
+`,cc=x.pre`
+  margin-top: auto;
+  max-height: 300px;
+  overflow: auto;
+  padding: ${e.spacing.sm};
+  border: 1px dashed ${e.colors.primary};
+  border-radius: ${e.borders.radius.base};
+  font-size: 11px;
+  white-space: pre-wrap;
+  word-break: break-all;
+
+  & + button {
+    margin-top: ${e.spacing.sm};
+  }
+`,lc="https://talk.zooniverse.org";function dc(o){const t=Object.fromEntries(Object.entries(o).map(([n,s])=>[n,s===void 0?void 0:String(s)]));return Zt(t)}async function Po(o,t,n){return ze(lc,`/${o}${dc(t)}`,{token:n})}function uc(o={},t){const n=`project-${Ro}`;return Po("boards",{section:n,subject_default:!0,...o},t)}function hc(o={},t){return Po("discussions",o,t)}async function pc(o,t){const{boards:n}=await uc({},t),s=n.find(i=>i.subject_default);if(!s)return{};const{discussions:r}=await hc({board_id:s.id,focus_id:o,focus_type:"Subject",page:1,page_size:10},t);return{board:s,discussion:r.find(i=>i.focus_id===o&&i.focus_type==="Subject")}}function On(o,t={},n){return Po("comments",{...t,discussion_id:o},n)}const Ln=20,gc="https://www.zooniverse.org/projects";function os(o){const t=o.split("/").map(n=>encodeURIComponent(n)).join("/");return`${gc}/${t}/talk`}function mc(o,t){return`${os(o)}/${encodeURIComponent(t.board_id)}/${encodeURIComponent(t.id)}`}function fc(o,t){return`${os(o)}/subjects/${encodeURIComponent(t)}`}function yc({projectSlug:o}){const t=P(f=>f.activeAnnotationId),{token:n}=Gt(),s=n==null?void 0:n.access_token,r=!!(t&&t!=="-1"&&t.startsWith("-")),i=t&&!t.startsWith("-")?t:null,[c,h]=d.useState({kind:"idle"}),[l,p]=d.useState(0),[u,y]=d.useState(!1),[g,b]=d.useState(null);d.useEffect(()=>{if(r){h({kind:"user-object"});return}if(!i){h({kind:"idle"});return}let f=!1;return h({kind:"loading"}),y(!1),b(null),(async()=>{try{const{board:$,discussion:C}=await pc(i,s);if(f)return;if(!C){h({kind:"not-found",board:$,subjectId:i});return}const A=await On(C.id,{page:1,page_size:Ln},s);if(f)return;h({kind:"loaded",discussion:C,comments:A.comments,nextPage:A.meta.comments.next_page})}catch($){if(f)return;h({kind:"error",error:$ instanceof Error?$.message:"Talk request failed"})}})(),()=>{f=!0}},[s,r,l,i]);const m=d.useCallback(async()=>{if(!(c.kind!=="loaded"||c.nextPage===null||u)){y(!0),b(null);try{const f=await On(c.discussion.id,{page:c.nextPage,page_size:Ln},s);h(w=>w.kind!=="loaded"||w.discussion.id!==c.discussion.id?w:{...w,comments:[...w.comments,...f.comments],nextPage:f.meta.comments.next_page})}catch(f){b(f instanceof Error?f.message:"Could not load more comments")}finally{y(!1)}}},[s,u,c]),S=c.kind==="not-found"&&c.board?fc(o||c.board.project_slug,c.subjectId):void 0;return a.jsxs(Qi,{"aria-live":"polite",children:[a.jsx(ec,{children:"Mini Talk"}),c.kind==="idle"&&a.jsx(qe,{children:"Select a box to view its Talk discussion."}),c.kind==="user-object"&&a.jsx(qe,{children:"Talk is not available for user-identified objects."}),c.kind==="loading"&&a.jsx(qe,{children:"Loading discussion…"}),c.kind==="not-found"&&a.jsxs(a.Fragment,{children:[a.jsx(qe,{children:"No Talk posts exist for this subject yet."}),S&&a.jsx(Un,{type:"button",onClick:()=>window.open(S,"_blank","noopener,noreferrer"),title:"Open the Talk board to start a discussion about this subject",children:"Talk about this subject"})]}),c.kind==="error"&&a.jsxs(a.Fragment,{children:[a.jsx(qe,{role:"alert",children:"Could not load the Talk discussion."}),a.jsx(qe,{children:c.error}),a.jsx(zn,{type:"button",onClick:()=>p(f=>f+1),children:"Retry"})]}),c.kind==="loaded"&&a.jsxs(a.Fragment,{children:[a.jsx(tc,{children:a.jsx(oc,{href:mc(o||c.discussion.project_slug,c.discussion),target:"_blank",rel:"noreferrer",title:"Click to open in a separate window",children:c.discussion.title})}),c.comments.length===0?a.jsx(qe,{children:"This discussion has no comments yet."}):a.jsx(nc,{children:c.comments.map(f=>a.jsxs(sc,{children:[a.jsxs(rc,{children:[a.jsx("strong",{children:f.user_display_name||f.user_login}),a.jsx("time",{dateTime:f.created_at,children:new Date(f.created_at).toLocaleString()})]}),a.jsx(ac,{children:f.is_deleted?"This comment has been deleted.":f.body})]},f.id))}),c.nextPage!==null&&a.jsxs(a.Fragment,{children:[a.jsx(zn,{type:"button",onClick:m,disabled:u,children:u?"Loading…":"Load older comments"}),g&&a.jsx(qe,{role:"alert",children:g})]}),a.jsx(Un,{type:"button",onClick:()=>window.open(S,"_blank","noopener,noreferrer"),title:"Open the Talk board to start a discussion about this subject",children:"Talk more about this subject"})]})]})}function xc({projectSlug:o}){const{buildPanoptesClassification:t,subjectId:n}=P(m=>({buildPanoptesClassification:m.buildPanoptesClassification,subjectId:m.subjectId})),s="false"===!0,[r,i]=d.useState(!1),[c,h]=d.useState(!1),[l,p]=d.useState(null),u=async()=>{var f;const m=await t(Ro,lt);v.app("Classifications (Panoptes format):",m);const S=er();if(S){v.panoptes(JSON.stringify(m),S.access_token);const w=await lr(m,S.access_token);v.panoptes("Submission response:",w);const $=(f=m.annotations.find(C=>C.task==="rect-annotations"))==null?void 0:f.value;if(Array.isArray($)){const C=$.flatMap(A=>typeof A=="object"&&A!==null&&"annotationId"in A&&typeof A.annotationId=="string"?[A.annotationId]:[]);re.getState().markBoxesSubmitted(C)}P.getState().markWorkSubmitted(),h(!0)}},y=()=>{En().length>0?i(!0):u()},g=async()=>{i(!1);for(const m of En())await Jn(m);await u()},b=()=>{i(!1),u()};return a.jsxs(a.Fragment,{children:[a.jsxs(Ji,{children:[r&&a.jsxs(ts,{role:"alertdialog","aria-label":"Unsaved changes",children:["⚠️ You have edited one or more masks without marking them as ready to submit. Do you want to mark all of them as ready before submitting?",a.jsx(Lt,{type:"button",onClick:g,children:"Mark all ready & submit"}),a.jsx(Lt,{type:"button",onClick:b,children:"Submit anyway"}),a.jsx(Lt,{type:"button",onClick:()=>i(!1),children:"Cancel"})]}),c&&a.jsxs(ic,{role:"alertdialog","aria-label":"Classification submitted",children:[a.jsx("b",{children:"Thank you for your classification!"}),a.jsx("br",{}),'You can keep working on this image or click "Next Subject" to load a new one.',a.jsx(Lt,{type:"button",onClick:()=>h(!1),children:"Okay"})]}),l&&a.jsx(cc,{"aria-label":"Dry-run classification preview",children:`DRY RUN - not submitted
+${l}`}),a.jsx(Vi,{onClick:y,children:"Submit Classification"}),s]}),a.jsx(yc,{projectSlug:o})]})}function bc(o,t,n){if(n==="none"||!t)return o;const{x:s,y:r}=o,{width:i,height:c}=t;switch(n){case"flipX":return{x:i-1-s,y:r};case"flipY":return{x:s,y:c-1-r};case"flipBoth":return{x:i-1-s,y:c-1-r};case"swapXY":return{x:r,y:s};default:return o}}function kc(o,t,n){return o.map(s=>{const r=bc({x:s.x,y:s.y},t,n);return{...s,x:Math.round(r.x),y:Math.round(r.y)}})}async function Bn(o,t,n="",s={}){var u;const{debug:r=!1,imageSize:i,coordinateFix:c="none",modelId:h="sam2-hiera-large"}=s;v.sam2("[SAM2 Service] segmentWithPoints called",{promptCount:t.length,prompts:t,options:{debug:r,imageSize:i,coordinateFix:c,modelId:h},imageSummary:o.substring(0,50)+(o.length>50?"...":"")});const l=kc(t,i,c);v.sam2("[SAM2 Service] Transformed prompts",{transformedPrompts:l});const p=n?`${n}/api/sam2/segment`:"/api/sam2/segment";try{const y={image_url:o,prompts:l,debug:r,model_id:h};v.sam2("[SAM2 Service] Sending request to",p,{debug:r,model_id:h,promptCount:l.length,imageSummary:o.substring(0,50)+(o.length>50?"...":"")});const g=await fetch(p,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(y)});if(v.sam2("[SAM2 Service] Response received",{status:g.status,statusText:g.statusText}),!g.ok){let m;try{const S=await g.json();m=S.detail??S.error??`HTTP ${g.status}`}catch{m=`HTTP ${g.status}`}throw v.sam2("[SAM2 Service] Request failed",{status:g.status,errorMessage:m}),new Error(`SAM2 segmentation failed: ${m}`)}const b=await g.json();return v.sam2("[SAM2 Service] Result received",{hasImage:!!((u=b.image)!=null&&u.url),hasDebugUrl:!!b.debug_url}),b}catch(y){throw v.sam2("[SAM2 Service] Error during segmentation",y),y instanceof Error?y:new Error(`SAM2 segmentation error: ${String(y)}`)}}function So(o){return new Promise((t,n)=>{const s=new Image;s.onload=()=>{const r=document.createElement("canvas");r.width=s.naturalWidth,r.height=s.naturalHeight;const i=r.getContext("2d");if(!i){n(new Error("Failed to get canvas context"));return}i.drawImage(s,0,0);const c=i.getImageData(0,0,r.width,r.height);t(c)},s.onerror=()=>n(new Error("Failed to load image from data URI")),s.src=o})}function Io(o,t){return{type:"sam",modelId:t,...ua(o)}}function wc(){const[o,t]=d.useState("modifier_brush"),[n,s]=d.useState(5),[r,i]=d.useState(5),[c,h]=d.useState("sam1-vit_b"),[l,p]=d.useState("none"),[u,y]=d.useState(!1),[g,b]=d.useState(!0),[m,S]=d.useState(!1),[f,w]=d.useState(!1),[$,C]=d.useState(void 0),[A,j]=d.useState(!1),[R,T]=d.useState(!1),[z,E]=d.useState(!1),[I,_]=d.useState(!1),[D,X]=d.useState(!1),[Z,te]=d.useState(void 0),[O,le]=d.useState(void 0),[ae,$e]=d.useState(void 0),xe=d.useCallback(oe=>{if(w(oe),oe){const fe=re.getState();fe.clearAnnotations(),fe.setSelectedAnnotationId(null)}},[]),{imageUrl:ve,annotations:Ye,undoLastAnnotation:Oe,setDebugImage:H,setDebugMasks:F,setPerAnnotationMask:L,pushPerAnnotationMaskHistory:W,imageDimensions:de,activeAnnotationId:J}=P();d.useEffect(()=>{hr("30908").then(oe=>{var me,V;if(!oe)return;$e(oe.slug),te(oe.display_name||"Defies definition"),le(oe.description||"Indescribable");const fe=((V=(me=oe.links)==null?void 0:me.avatar)==null?void 0:V.href)||null;fe&&pr(fe).then(ye=>{var q;C(((q=ye.media)==null?void 0:q[0].src)||"https://zooniverse.github.io/panoptes/images/logo.png")})})},[]);const Y=d.useCallback(async()=>{var ye;if(!Oe())return;const fe=P.getState().annotations,me=J||"-1",V=fe.filter(q=>q.type==="point"&&(q.annotationId||"-1")===me).map(q=>{const ue=q;return{x:ue.x,y:ue.y,label:ue.label}});if(V.length===0){L(me,null),H(null),F(null,null);return}if(ve)try{const q=await Bn(ve,V,"",{debug:u,imageSize:de??void 0,coordinateFix:l,modelId:c});if(u&&q.debug_url){if(H(q.debug_url),q.debug_masks&&q.mask_selection){const ue=V.map(pe=>({x:pe.x,y:pe.y,label:pe.label}));F(q.debug_masks,q.mask_selection,q.debug_crop||void 0,ue)}L(me,null)}else if(H(null),F(null,null),(ye=q.image)!=null&&ye.url){const ue=q.image.url;So(ue).then(pe=>{const B=Io(pe,c),Q=P.getState().perAnnotationMasks[me];let ie=[],be=0;if(Q){const ke=Q.history.slice(0,Q.historyIndex+1);ie=[...ke,B],be=ke.length}else ie=[B],be=0;const je=Ft(ie,be)||pe,Ae=tt(je);W(me,B,V),L(me,Ae)}).catch(pe=>{v.app("Failed to convert SAM mask to ImageData:",pe),L(me,ue)})}}catch(q){v.app("SAM2 not available:",q)}},[ve,Oe,L,H,F,de,l,u,c,J,W]),Ce=d.useCallback(async(oe,fe,me)=>{var q,ue,pe;if(!ve)return;const V=J||"-1",ye=[...Ye.filter(B=>B.type==="point"&&(B.annotationId||"-1")===V).map(B=>{const Q=B;return{x:Q.x,y:Q.y,label:Q.label}}),{x:oe,y:fe,label:me}];if(ye.length!==0)try{const B=await Bn(ve,ye,"",{debug:u,imageSize:de??void 0,coordinateFix:l,modelId:c});if(v.sam2("[handlePointClick] SAM response: %O",{debugMode:u,hasDebugUrl:!!B.debug_url,hasDebugMasks:!!B.debug_masks,maskSelection:B.mask_selection,debugMasksLength:(q=B.debug_masks)==null?void 0:q.length}),u){if(B.debug_url){if(H(B.debug_url),B.debug_masks&&B.mask_selection){v.debug("[handlePointClick] Setting debug masks: %d masks",B.debug_masks.length);const Q=ye.map(ie=>({x:ie.x,y:ie.y,label:ie.label}));F(B.debug_masks,B.mask_selection,B.debug_crop||void 0,Q)}else v.debug("[handlePointClick] Debug masks missing: %O",{hasDebugMasks:!!B.debug_masks,hasMaskSelection:!!B.mask_selection});L(V,null)}else if(H(null),F(null,null),v.debug("Debug requested but no debug_url in response: %O",B),(ue=B.image)!=null&&ue.url){const Q=B.image.url;So(Q).then(ie=>{const be=Io(ie,c),je=P.getState().perAnnotationMasks[V];let Ae=[],ke=0;if(je){const Ve=je.history.slice(0,je.historyIndex+1);Ae=[...Ve,be],ke=Ve.length}else Ae=[be],ke=0;const ut=Ft(Ae,ke)||ie,ot=tt(ut);W(V,be,ye),L(V,ot)}).catch(ie=>{v.app("Failed to convert SAM mask to ImageData: %O",ie),L(V,Q)})}}else if(H(null),F(null,null),(pe=B.image)!=null&&pe.url){const Q=B.image.url;So(Q).then(ie=>{const be=Io(ie,c),je=P.getState().perAnnotationMasks[V];let Ae=[],ke=0;if(je){const Ve=je.history.slice(0,je.historyIndex+1);Ae=[...Ve,be],ke=Ve.length}else Ae=[be],ke=0;const ut=Ft(Ae,ke)||ie,ot=tt(ut);W(V,be,ye),L(V,ot)}).catch(ie=>{v.app("Failed to convert SAM mask to ImageData:",ie),L(V,Q)})}}catch(B){v.app("SAM2 not available:",B)}},[ve,Ye,L,H,F,de,l,u,c,J,W]),[Re,Ge]=d.useState("add"),[Le,eo]=d.useState(1),[Je,$t]=d.useState(1),vt=d.useRef(null),St=d.useMemo(()=>({brushSize:n,predModBrushSize:r,predModBrushMode:Re,selectedMaskOpacity:Le,nonSelectedMaskOpacity:Je,predModBrushRef:vt}),[n,r,Re,Le,Je]),to=d.useCallback(oe=>{s(oe)},[]),It=d.useCallback(oe=>{Ge(oe)},[]),oo=d.useCallback(oe=>{i(oe)},[]);return a.jsxs(Cr,{children:[a.jsxs(jr,{children:[a.jsx(Dr,{src:$,$loaded:A,onLoad:()=>j(!0)}),a.jsxs(Ar,{children:[a.jsx(Mr,{children:Z}),a.jsx(Rr,{children:O}),a.jsxs(Er,{children:[a.jsx(Nr,{}),a.jsx(Ua,{onLoadingChange:xe})]})]}),a.jsx(_r,{children:a.jsx(Xr,{})})]}),a.jsxs(Ur,{children:[a.jsxs(zr,{children:[a.jsx(Tr,{children:a.jsx(Pr,{href:"https://www.astronaimee.com/Artifact-InSPECtor-CFE/",target:"_blank",rel:"noopener noreferrer",children:"Tutorial"})}),a.jsx(Gi,{tool:o,onToolChange:t,brushProps:St,showTool2Boxes:m,onToggleTool2Boxes:()=>S(oe=>!oe),onBrushSizeChange:to,onPredModBrushModeChange:It,modelId:c,onModelChange:h,showPoints:g,onShowPointsChange:b,onPredModBrushSizeChange:oo,onSelectedMaskOpacityChange:eo,onNonSelectedMaskOpacityChange:$t,coordinateFix:l,onCoordinateFixChange:p,debugCoords:u,onDebugCoordsChange:y})]}),a.jsx(Or,{children:a.jsx(Wi,{tool:o,brushProps:St,onPointClick:Ce,onUndo:Y,showPoints:g,showTool2Boxes:m,isSubjectLoading:f})}),a.jsx(Lr,{children:a.jsx(xc,{projectSlug:ae})})]}),a.jsx(yn,{children:a.jsxs("p",{children:["This project's data is stored within the Zooniverse database and is governed by the Zooniverse Terms & Conditions (",a.jsx(ct,{href:"https://www.zooniverse.org/privacy",children:"User Agreement and Privacy Policy"})," and ",a.jsx(ct,{href:"https://www.zooniverse.org/security",children:"Security Policy"}),")."]})}),a.jsxs(yn,{children:[a.jsxs("p",{children:[a.jsx(_t,{src:"https://thumbnails.zooniverse.org/50x/panoptes-uploads.zooniverse.org/project_attached_image/c9885821-ab6c-4d7b-9bf1-99c03a057743.png",$loaded:R,onLoad:()=>T(!0)}),a.jsx("br",{}),"This work is funded by NASA. Learn more about NASA Citizen Science Projects by following ",a.jsx(ct,{href:"https://science.nasa.gov/citizen-science/",children:" this link"}),"."]}),a.jsxs("p",{children:[a.jsx(_t,{src:"https://thumbnails.zooniverse.org/50x/panoptes-uploads.zooniverse.org/project_attached_image/e0b1e0ef-d0f8-4ae8-846e-31cf47dc3556.png",$loaded:D,onLoad:()=>X(!0)}),a.jsx("br",{}),"This project makes use of Q1 data from European Space Agency's Euclid mission; learn more by following ",a.jsx(ct,{href:"https://www.cosmos.esa.int/web/euclid/euclid-q1-data-release",children:" this link"}),"."]}),a.jsxs("p",{children:[a.jsx(_t,{src:"https://thumbnails.zooniverse.org/50x/panoptes-uploads.zooniverse.org/project_attached_image/46278779-bb06-4747-91f9-1e8ea5dd749b.png",$loaded:z,onLoad:()=>E(!0)}),a.jsx(_t,{src:"https://thumbnails.zooniverse.org/200x/panoptes-uploads.zooniverse.org/project_attached_image/1817f12b-3dca-4d2b-bb7d-ccc18f882751.png",$loaded:I,onLoad:()=>_(!0)}),a.jsx("br",{}),"ELSA: Euclid Legacy Science Advanced analysis tools (Grant Agreement no. 101135203) is funded by the European Union. Views and opinions expressed are however those of the author(s) only and do not necessarily reflect those of the European Union or Innovate UK. Neither the European Union nor the granting authority can be held responsible for them. UK participation is funded through the UK Horizon guarantee scheme under Innovate UK grant 10093177."]})]})]})}qs(document.getElementById("root")).render(a.jsx(d.StrictMode,{children:a.jsx(mr,{children:a.jsx(wc,{})})}));
